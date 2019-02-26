@@ -12,7 +12,7 @@ endif
 
 ifeq ($(config),debug_x64)
   RESCOMP = windres
-  TARGETDIR = ../bin/x64/debug_x64
+  TARGETDIR = ../bin/x86_64/Debug
   TARGET = $(TARGETDIR)/libBigInt.a
   OBJDIR = obj/x64/Debug/BigInt
   DEFINES += -DDEBUG
@@ -39,7 +39,7 @@ endif
 
 ifeq ($(config),debug_x86)
   RESCOMP = windres
-  TARGETDIR = ../bin/x86/debug_x86
+  TARGETDIR = ../bin/x86/Debug
   TARGET = $(TARGETDIR)/libBigInt.a
   OBJDIR = obj/x86/Debug/BigInt
   DEFINES += -DDEBUG
@@ -66,7 +66,7 @@ endif
 
 ifeq ($(config),release_x64)
   RESCOMP = windres
-  TARGETDIR = ../bin/x64/release_x64
+  TARGETDIR = ../bin/x86_64/Release
   TARGET = $(TARGETDIR)/libBigInt.a
   OBJDIR = obj/x64/Release/BigInt
   DEFINES += -DNDEBUG
@@ -93,7 +93,7 @@ endif
 
 ifeq ($(config),release_x86)
   RESCOMP = windres
-  TARGETDIR = ../bin/x86/release_x86
+  TARGETDIR = ../bin/x86/Release
   TARGET = $(TARGETDIR)/libBigInt.a
   OBJDIR = obj/x86/Release/BigInt
   DEFINES += -DNDEBUG

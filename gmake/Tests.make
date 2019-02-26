@@ -12,7 +12,7 @@ endif
 
 ifeq ($(config),debug_x64)
   RESCOMP = windres
-  TARGETDIR = ../bin/x64/tests
+  TARGETDIR = ../bin/x86_64/tests
   TARGET = $(TARGETDIR)/test_debug_x64
   OBJDIR = obj/x64/Debug/Tests
   DEFINES += -DDEBUG
@@ -22,8 +22,8 @@ ifeq ($(config),debug_x64)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -g -Wall -Wextra -Werror -std=c++11
   ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -g -Wall -Wextra -Werror -std=c++11
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += ../bin/x64/debug_x64/libBigInt.a
-  LDDEPS += ../bin/x64/debug_x64/libBigInt.a
+  LIBS += ../bin/x86_64/Debug/libBigInt.a
+  LDDEPS += ../bin/x86_64/Debug/libBigInt.a
   ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib64 -m64
   LINKCMD = $(CXX) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
   define PREBUILDCMDS
@@ -49,8 +49,8 @@ ifeq ($(config),debug_x86)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m32 -g -Wall -Wextra -Werror -std=c++11
   ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m32 -g -Wall -Wextra -Werror -std=c++11
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += ../bin/x86/debug_x86/libBigInt.a
-  LDDEPS += ../bin/x86/debug_x86/libBigInt.a
+  LIBS += ../bin/x86/Debug/libBigInt.a
+  LDDEPS += ../bin/x86/Debug/libBigInt.a
   ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib32 -m32
   LINKCMD = $(CXX) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
   define PREBUILDCMDS
@@ -66,7 +66,7 @@ endif
 
 ifeq ($(config),release_x64)
   RESCOMP = windres
-  TARGETDIR = ../bin/x64/tests
+  TARGETDIR = ../bin/x86_64/tests
   TARGET = $(TARGETDIR)/test_release_x64
   OBJDIR = obj/x64/Release/Tests
   DEFINES += -DNDEBUG
@@ -76,8 +76,8 @@ ifeq ($(config),release_x64)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -Wall -Wextra -Werror -std=c++11
   ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m64 -O2 -Wall -Wextra -Werror -std=c++11
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += ../bin/x64/release_x64/libBigInt.a
-  LDDEPS += ../bin/x64/release_x64/libBigInt.a
+  LIBS += ../bin/x86_64/Release/libBigInt.a
+  LDDEPS += ../bin/x86_64/Release/libBigInt.a
   ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib64 -m64 -s
   LINKCMD = $(CXX) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
   define PREBUILDCMDS
@@ -103,8 +103,8 @@ ifeq ($(config),release_x86)
   ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -m32 -O2 -Wall -Wextra -Werror -std=c++11
   ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -m32 -O2 -Wall -Wextra -Werror -std=c++11
   ALL_RESFLAGS += $(RESFLAGS) $(DEFINES) $(INCLUDES)
-  LIBS += ../bin/x86/release_x86/libBigInt.a
-  LDDEPS += ../bin/x86/release_x86/libBigInt.a
+  LIBS += ../bin/x86/Release/libBigInt.a
+  LDDEPS += ../bin/x86/Release/libBigInt.a
   ALL_LDFLAGS += $(LDFLAGS) -L/usr/lib32 -m32 -s
   LINKCMD = $(CXX) -o "$@" $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)
   define PREBUILDCMDS
