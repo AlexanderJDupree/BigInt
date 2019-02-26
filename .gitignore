@@ -1,0 +1,5 @@
+# Binaries
+bin/
+
+# Obj Files
+gmake/obj/
