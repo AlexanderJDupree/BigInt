@@ -1,5 +1,6 @@
 # Binaries
 bin/
 
-# Obj Files
-gmake/obj/
+# Project files
+gmake/
+vs*/

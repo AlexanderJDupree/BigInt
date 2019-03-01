@@ -55,13 +55,17 @@ project "BigInt"
     files (source .. "**.c")
     includedirs (include)
 
+    filter { "action:gmake or action:gmake2" }
+        buildoptions "-std=c11"
+
+    filter {} -- close filter
+
 project "Tests"
     kind "ConsoleApp"
     language "C++"
     links "BigInt"
     targetdir "bin/%{cfg.architecture}/tests/"
     targetname "test_%{cfg.shortname}"
-    buildoptions "-std=c++11"
 
     local include  = "include/"
     local test_src = "tests/"
@@ -70,4 +74,10 @@ project "Tests"
     files (test_src .. "**.cpp")
 
     includedirs { test_inc, include }
+
+    filter { "action:gmake or action:gmake2" }
+        buildoptions "-std=c++11"
+        postbuildcommands ".././bin/%{cfg.architecture}/tests/test_%{cfg.shortname}"
+
+    filter {} -- close filter
 
