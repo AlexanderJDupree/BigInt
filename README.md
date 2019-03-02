@@ -29,21 +29,21 @@ int main()
 
 ## What's in this Repo?
 
-BigInt utilizes premake5 to generate the requisite project files. The generated GNU makefiles are provided in this repo, however if you need to build visual studio or xcode project files just run:
+This repo utilizes [Premake5](https://github.com/premake/premake-core) to build the necessary project files. Once premake5 is installed just run:
 
 ```
-premake5 <action>
+premake5 gmake
 ```
 
-where <action> is the type of project files needed. See the [Premake5](https://github.com/premake/premake-core) repo for further usage instructions.
+This will generate the GNU makefiles for this project. If you need specific project files run 'premake5 --help' for a list of supported actions. See the [Premake5](https://github.com/premake/premake-core) documentaion for further usage instructions.
 
-If the GNU makefiles suffice then you can generate the BigInt static library and unit tests by running:
+If the GNU makefiles suffice, then you can generate the File_Reader static library and unit tests by running:
 
 ```
-cd gmake && make
+cd gmake/ && make
 ```
-The executable and static lib will be located in the *bin/* directory.
-*Note*: By default make will build debug_x86 configuration. Run 'make help' for a list of possible configurations.
+
+I've included a postbuild command in premake5.lua that will run the unit tests automatically, however if you want to rerun the tests they are located in bin/tests/
 
 ## Built With
 
