@@ -7,7 +7,6 @@
  *
  */
 
-#ifdef UNIT_TESTS
 
 #include <random>
 #include <chrono>
@@ -95,6 +94,8 @@ TEST_CASE("Constructing BigInt's with values <= BUCKET_MAX_SIZE", "[constructors
     }
 }
 
+#ifdef MOCKING_ENABLED
+
 TEST_CASE("Constructing BigInts with values > BUCKET_MAX_SIZE", "[constructors]")
 {
 #ifdef BIGINT__8bit // Debug bucket is 8 bits wide. 
@@ -165,19 +166,19 @@ TEST_CASE("Constructing BigInts with values > BUCKET_MAX_SIZE", "[constructors]"
         const char* test_str = "\t\t  \n-001112233445566778899aabbccddeeff  \t";
 #ifdef BIGINT__8bit
         uint8_t expected_values[] = {
-            255, 238, 221, 204, 187, 170, 153, 
-            136, 119, 102, 85, 68, 51, 34, 17, 1
+            0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 
+            0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x1
         };
         int nbuckets = 16;
 #else
 #ifdef BIGINT__x64
         uint64_t expected_values[] = {
-            9843086184167632639U, 76880272227133047U
+            0x8899aabbccddeeff, 0x111223344556677
         };
         int nbuckets = 2;
-#else
+#else // BIGINT__x86
         uint32_t expected_values[] = {
-            3437096703U, 2291772091U, 1146447479U, 17900083U
+            0xccddeeff, 0x8899aabb, 0x44556677, 0x1112233
         };
         int nbuckets = 4;
 #endif
@@ -186,7 +187,7 @@ TEST_CASE("Constructing BigInts with values > BUCKET_MAX_SIZE", "[constructors]"
         bucket_t* values = m_bigint.get_buckets(num);
 
         REQUIRE(buckets(num) == nbuckets);
-        for(int i = 0; i < 16; ++i)
+        for(int i = 0; i < nbuckets; ++i)
         {
             REQUIRE(expected_values[i] == values[i]);
         }
@@ -194,43 +195,42 @@ TEST_CASE("Constructing BigInts with values > BUCKET_MAX_SIZE", "[constructors]"
     }
 }
 
-
 TEST_CASE("Converting characters to integer values", "[char_to_num]")
 {
     SECTION("Base 10 characters")
     {
         for (int i = 0; i < 10; ++i)
         {
-            REQUIRE(char_to_num(i + '0', 10) == i);
+            REQUIRE(m_bigint.char_to_num(i + '0', 10) == i);
         }
     }
     SECTION("Base 16 characters")
     {
         for (int i = 0; i < 10; ++i)
         {
-            REQUIRE(char_to_num(i + '0', 16) == i);
+            REQUIRE(m_bigint.char_to_num(i + '0', 16) == i);
         }
         for (int i = 10; i < 16; ++i)
         {
-            REQUIRE(char_to_num(i + 'a' - 10, 16) == i);
+            REQUIRE(m_bigint.char_to_num(i + 'a' - 10, 16) == i);
         }
     }
     SECTION("Base 36 characters, is the upper limit for conversion")
     {
         for (int i = 0; i < 10; ++i)
         {
-            REQUIRE(char_to_num(i + '0', 36) == i);
+            REQUIRE(m_bigint.char_to_num(i + '0', 36) == i);
         }
         for (int i = 10; i < 36; ++i)
         {
-            REQUIRE(char_to_num(i + 'a' - 10, 36) == i );
+            REQUIRE(m_bigint.char_to_num(i + 'a' - 10, 36) == i );
         }
     }
     SECTION("Base 2 Characters, is the lower limit for conversion")
     {
         for (int i = 0; i < 2; ++i)
         {
-            REQUIRE(char_to_num(i + '0', 2) == i);
+            REQUIRE(m_bigint.char_to_num(i + '0', 2) == i);
         }
     }
     SECTION("Arbitrary base in range 2 - 36 inclusive")
@@ -240,20 +240,20 @@ TEST_CASE("Converting characters to integer values", "[char_to_num]")
 
         for (; i < base && i < 10; ++i)
         {
-            REQUIRE(char_to_num(i + '0', base) == i);
+            REQUIRE(m_bigint.char_to_num(i + '0', base) == i);
         }
 
         for (; i < base; ++i)
         {
-            REQUIRE(char_to_num(i + 'a' - 10, base) == i);
+            REQUIRE(m_bigint.char_to_num(i + 'a' - 10, base) == i);
         }
     }
     SECTION("Invalid characters return -1")
     {
-        REQUIRE(char_to_num('a', 10) == -1);
-        REQUIRE(char_to_num('g', 16) == -1);
-        REQUIRE(char_to_num('/', 36) == -1);
-        REQUIRE(char_to_num('3', 2) == -1);
+        REQUIRE(m_bigint.char_to_num('a', 10) == -1);
+        REQUIRE(m_bigint.char_to_num('g', 16) == -1);
+        REQUIRE(m_bigint.char_to_num('/', 36) == -1);
+        REQUIRE(m_bigint.char_to_num('3', 2) == -1);
     }
 }
 

@@ -27,7 +27,7 @@ typedef int8_t  int_val;
         #define BUCKET_MAX_SIZE UINT64_MAX
         #define INT_VAL_MAX INT64_MAX
         #define INT_VAL_MIN INT64_MIN
-    #else
+    #else // BIGINT__x86
         typedef uint32_t bucket_t;
         typedef int32_t  int_val;
         #define BUCKET_WIDTH 32
@@ -89,16 +89,14 @@ int compare_int(BigInt* lhs, int_val rhs);
 int compare_uint(BigInt* lhs, bucket_t rhs);
 int compare_bigint(BigInt* lhs, BigInt* rhs);
 
-// Returns -1 if there is no valid conversion
-int char_to_num(char c, int base);
-
-#ifdef UNIT_TESTS
+#ifdef MOCKING_ENABLED
 typedef struct mock_bigint {
+    int (*char_to_num)(char, int);
     int (*format_string)(const char*, const char**, const char**, int);
     bucket_t* (*get_buckets)(BigInt* num);
 } mock_bigint;
 
 extern const mock_bigint m_bigint;
-#endif // UNIT_TESTS
+#endif // MOCKING_ENABLED
 
 #endif // BIGINT_H

@@ -23,7 +23,21 @@ struct BigInt
     int8_t sign;
 };
 
-static bucket_t convert_to_num(const char* str_num, int base)
+static int char_to_num(char c, int base)
+{
+    c = tolower(c);
+
+    // Default base is 10
+    base = (base < 2 || base > 36) ? 10 : base;
+
+    char upper_alphabetic_limit = 'a' + base - 11;
+    char upper_numeric_limit = (base < 10) ? '0' + base - 1 : '9';
+
+    return (c >= '0' && c <= upper_numeric_limit)   ? c - '0' :
+           (c >= 'a'&& c <= upper_alphabetic_limit) ? c - 'a' + 10 : -1;
+}
+
+static bucket_t string_to_num(const char* str_num, int base)
 {
     const char** endptr = &str_num;
     bucket_t num = labs(strtol(str_num, (char**) endptr, base));
@@ -138,7 +152,7 @@ BigInt* str_BigInt(const char* str_num, int base)
     size_t nbuckets = (digits + digits_per_bucket - 1) / digits_per_bucket;
     if(nbuckets == 1)
     {
-        BigInt* new_int = val_BigInt(convert_to_num(str_num, base));
+        BigInt* new_int = val_BigInt(string_to_num(str_num, base));
         new_int->sign = sign;
         return new_int;
     }
@@ -252,19 +266,7 @@ int compare_int(BigInt* lhs, int_val rhs)
     return compare_uint(lhs, rhs);
 }
 
-int char_to_num(char c, int base)
-{
-    c = tolower(c);
-    base = (base < 2 || base > 36) ? 10 : base;
-
-    char upper_alphabetic_limit = 'a' + base - 11;
-    char upper_numeric_limit = (base < 10) ? '0' + base - 1 : '9';
-
-    return (c >= '0' && c <= upper_numeric_limit) ? c - '0' :
-           (c >= 'a'&& c <= upper_alphabetic_limit) ? c - 'a' + 10 : -1;
-}
-
-#ifdef UNIT_TESTS
+#ifdef MOCKING_ENABLED
 
 static bucket_t* get_buckets(BigInt* num)
 {
@@ -272,9 +274,10 @@ static bucket_t* get_buckets(BigInt* num)
 } 
 
 const mock_bigint m_bigint = {
+    .char_to_num = char_to_num,
     .format_string = format_string,
     .get_buckets = get_buckets
 };
 
-#endif // UNIT_TESTS
+#endif // MOCKING_ENABLED
 
