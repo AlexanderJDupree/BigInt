@@ -22,10 +22,10 @@ long long get_seed()
     return std::chrono::high_resolution_clock::now().time_since_epoch().count();
 }
 
-int_val any_int()
+int_val any_int(int_val min, int_val max)
 {
     std::mt19937 generator(get_seed());
-    std::uniform_int_distribution<int_val> u_dist(INT_VAL_MIN, INT_VAL_MAX);
+    std::uniform_int_distribution<int_val> u_dist(min, max);
     return u_dist(generator);
 }
 
@@ -51,6 +51,17 @@ TEST_CASE("Constructing BigInt's", "[constructors]")
         int test_val = 123;
         BigInt* num = val_BigInt(test_val);
 
+        REQUIRE(digits(num, 10) == 3);
+        REQUIRE(compare_int(num, test_val) == 0);
+
+        free_BigInt(num);
+    }
+    SECTION("Value constructor with negative value")
+    {
+        int test_val = -123;
+        BigInt* num = val_BigInt(test_val);
+
+        REQUIRE(sign(num) < 0);
         REQUIRE(compare_int(num, test_val) == 0);
 
         free_BigInt(num);
@@ -99,6 +110,7 @@ TEST_CASE("Constructing BigInt's", "[constructors]")
         REQUIRE(compare_int(num, test_val) == 0);
         free_BigInt(num);
     }
+    /*
     SECTION("Construction with invalid base does not allocate bigint")
     {
         REQUIRE(str_BigInt("0xff", 42) == NULL);
@@ -112,6 +124,69 @@ TEST_CASE("Constructing BigInt's", "[constructors]")
         REQUIRE(compare_int(num, 0) == 0);
 
         free_BigInt(num);
+    }
+    */
+}
+
+TEST_CASE("Converting characters to integer values", "[char_to_num]")
+{
+    SECTION("Base 10 characters")
+    {
+        for (int i = 0; i < 10; ++i)
+        {
+            REQUIRE(char_to_num(i + '0', 10) == i);
+        }
+    }
+    SECTION("Base 16 characters")
+    {
+        for (int i = 0; i < 10; ++i)
+        {
+            REQUIRE(char_to_num(i + '0', 16) == i);
+        }
+        for (int i = 10; i < 16; ++i)
+        {
+            REQUIRE(char_to_num(i + 'a' - 10, 16) == i);
+        }
+    }
+    SECTION("Base 36 characters, is the upper limit for conversion")
+    {
+        for (int i = 0; i < 10; ++i)
+        {
+            REQUIRE(char_to_num(i + '0', 36) == i);
+        }
+        for (int i = 10; i < 36; ++i)
+        {
+            REQUIRE(char_to_num(i + 'a' - 10, 36) == i );
+        }
+    }
+    SECTION("Base 2 Characters, is the lower limit for conversion")
+    {
+        for (int i = 0; i < 2; ++i)
+        {
+            REQUIRE(char_to_num(i + '0', 2) == i);
+        }
+    }
+    SECTION("Arbitrary base in range 2 - 36 inclusive")
+    {
+        int i = 0;
+        int base = any_int(2, 36);
+
+        for (; i < base && i < 10; ++i)
+        {
+            REQUIRE(char_to_num(i + '0', base) == i);
+        }
+
+        for (; i < base; ++i)
+        {
+            REQUIRE(char_to_num(i + 'a' - 10, base) == i);
+        }
+    }
+    SECTION("Invalid characters return -1")
+    {
+        REQUIRE(char_to_num('a', 10) == -1);
+        REQUIRE(char_to_num('g', 16) == -1);
+        REQUIRE(char_to_num('/', 36) == -1);
+        REQUIRE(char_to_num('3', 2) == -1);
     }
 }
 

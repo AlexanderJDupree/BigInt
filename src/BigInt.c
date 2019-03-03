@@ -18,7 +18,8 @@
 struct BigInt
 {
     bucket_t* value;
-    size_t buckets;
+    bucket_t digits;
+    size_t nbuckets;
     int8_t sign;
 };
 
@@ -58,7 +59,7 @@ BigInt* reserve_BigInt(bucket_t buckets)
     if(new_int)
     {
         new_int->value = allocate_buckets(buckets);
-        new_int->buckets = buckets;
+        new_int->nbuckets = buckets;
         new_int->sign = 1;
     }
     return new_int;
@@ -74,23 +75,24 @@ BigInt* val_BigInt(int_val num)
     BigInt* new_int = reserve_BigInt(1);
     if(new_int)
     {
-        num = labs(num);
-        new_int->value[0] = num;
         new_int->sign = num;
+        new_int->value[0] = labs(num);
     }
     return new_int;
 }
 
 BigInt* str_BigInt(const char* str_num, int base)
 {
-    if (str_num && (base == 10 || base == 16))
+    if(base < 2 || base > 36)
     {
-        bucket_t num = convert_to_num(str_num, base);
-        BigInt* new_int = val_BigInt(num);
-        new_int->sign = is_negative(str_num);
-        return new_int;
+        return NULL;
     }
-    return NULL;
+    // Count number of digits in string
+    
+    bucket_t val = convert_to_num(str_num, base);
+    BigInt* new_int = val_BigInt(val);
+    new_int->sign = is_negative(str_num);
+    return new_int;
 }
 
 void free_BigInt(BigInt* num)
@@ -102,7 +104,7 @@ void free_BigInt(BigInt* num)
 
 int buckets(BigInt* num)
 {
-    return (num != NULL) ? num->buckets : 0;
+    return (num != NULL) ? num->nbuckets : 0;
 }
 
 int sign(BigInt* num)
@@ -112,7 +114,7 @@ int sign(BigInt* num)
 
 int digits(BigInt* num, int base)
 {
-    return (num != NULL) ? count_digits(num->value[num->buckets - 1], base) : -1;
+    return (num != NULL) ? count_digits(num->value[num->nbuckets - 1], base) : -1;
 }
 
 int count_digits(long num, int base)
@@ -145,5 +147,17 @@ int compare_int(BigInt* lhs, int_val rhs)
         return (lhs->sign > 0) ? lhs->value[0] - rhs : lhs->value[0] - labs(rhs);
     }
     return  rhs;
+}
+
+int char_to_num(char c, int base)
+{
+    c = tolower(c);
+    base = (base < 2 || base > 36) ? 10 : base;
+
+    char upper_alphabetic_limit = 'a' + base - 11;
+    char upper_numeric_limit = (base < 10) ? '0' + base - 1 : '9';
+
+    return (c >= '0' && c <= upper_numeric_limit) ? c - '0' :
+           (c >= 'a'&& c <= upper_alphabetic_limit) ? c - 'a' + 10 : -1;
 }
 

@@ -38,7 +38,7 @@ typedef int8_t  int_val;
 #endif // DEBUG
 
 /*
- * bucket_t is an unsigned integral type that represents portions of the big_int
+ * bucket_t is an unsigned integral type that represents portions of the BigInt
  *
  * int_val is the signed integral of bucket_t and is meant for the user to quickly
  * assign values to the BigInt when the values are less than BUCKET_MAX_SIZE
@@ -84,5 +84,8 @@ int count_digits(long num, int base);
 // Returns 0 if equal. < 0 if (lhs < rhs) and > 0 if (lhs > rhs)
 int compare_int(BigInt* lhs, int_val rhs);
 int compare_bigint(BigInt* lhs, BigInt* rhs);
+
+// Returns -1 if there is no valid conversion
+int char_to_num(char c, int base);
 
 #endif // BIGINT_H
