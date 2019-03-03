@@ -7,7 +7,7 @@
 
 -- WORKSPACE CONFIGURATION --
 workspace "BigInt"
-    configurations { "debug", "release", "tests"}
+    configurations { "debug", "release" }
     platforms { "x64", "x86", "8bit" }
 
     if _ACTION == "clean" then
@@ -38,16 +38,12 @@ workspace "BigInt"
     warnings "Extra"
 
     filter "configurations:debug*"   
-        defines { "DEBUG" } 
+        defines { "DEBUG", "MOCKING_ENABLED" } 
         symbols "On"
 
     filter "configurations:release*" 
         defines { "NDEBUG" } 
         optimize "On"
-
-    filter "configurations:tests*"  
-        defines { "UNIT_TESTS" } 
-        symbols "On"
 
     filter "toolset:gcc"
         buildoptions { 
@@ -59,7 +55,7 @@ workspace "BigInt"
 project "BigInt"
     kind "StaticLib"
     language "C"
-    targetdir "bin/%{cfg.platform}/%{cfg.buildcfg}"
+    targetdir "bin/%{cfg.buildcfg}/lib"
     targetname "BigInt_%{cfg.platform}"
 
     local source = "src/"
@@ -77,8 +73,8 @@ project "Tests"
     kind "ConsoleApp"
     language "C++"
     links "BigInt"
-    targetdir "bin/%{cfg.platform}/tests/"
-    targetname "%{cfg.platform}_tests"
+    targetdir "bin/tests/"
+    targetname "%{cfg.buildcfg}_%{cfg.platform}_tests"
 
     local include  = "include/"
     local test_src = "tests/"
@@ -88,11 +84,10 @@ project "Tests"
 
     includedirs { test_inc, include }
 
+    postbuildcommands ".././bin/tests/%{cfg.buildcfg}_%{cfg.platform}_tests"
+
     filter { "action:gmake or action:gmake2" }
         buildoptions "-std=c++11"
-
-    filter { "configurations:Tests" }
-        postbuildcommands ".././bin/%{cfg.platform}/tests/%{cfg.platform}_tests"
 
     filter {} -- close filter
 
