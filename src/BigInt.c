@@ -7,9 +7,8 @@
  *
  */
 
-#include <math.h>
-#include <errno.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "BigInt.h"
@@ -18,10 +17,20 @@
 struct BigInt
 {
     bucket_t* value;
-    size_t digits;
     size_t nbuckets;
     int8_t sign;
 };
+
+static int count_hex_digits(bucket_t num)
+{
+    //stackoverflow.com/questions/9721042/
+    //count-number-of-digits-which-method-is-most-efficient/
+#ifdef BIGINT__x64
+    return snprintf(NULL, 0, "%lx", num);
+#else
+    return snprintf(NULL, 0, "%x", num);
+#endif
+}
 
 static int char_to_num(char c, int base)
 {
@@ -220,27 +229,20 @@ int buckets(BigInt* num)
 
 int sign(BigInt* num)
 {
-    return num->sign;
+    return (num != NULL) ? num->sign : 0;
 }
 
-int digits(BigInt* num, int base)
+int hex_digits(BigInt* num)
 {
-    return (num != NULL) ? count_digits(num->value[num->nbuckets - 1], base) : -1;
-}
-
-int count_digits(long num, int base)
-{
-    num = labs(num); // labs : long absolute value
-    if(base == 10 || base == 16)
+    if(num != NULL)
     {
-        int digits = 1;
-        int power = 1;
-        while(num / power >= base)
-        {
-            ++digits;
-            power *= base;
-        }
-        return digits;
+        // Finds the leading bucket value
+        size_t i = num->nbuckets - 1;
+        for(; i > 0  && num->value[i] == 0; --i);
+
+        // Return leading digits plus the number of digits for each full bucket
+        return count_hex_digits(num->value[i]) 
+               + (num->nbuckets - (num->nbuckets - i)) * 2 * sizeof(bucket_t);
     }
     return -1;
 }

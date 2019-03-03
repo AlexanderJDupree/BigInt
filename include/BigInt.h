@@ -1,7 +1,8 @@
 /* 
  * File: BigInt.h
  *
- * Brief: Big Integer utility for arbitrary precision arithmetic
+ * Brief: Big Integer utility for arbitrary precision arithmetic. Currently
+ *        BigInt only supports strings in hexadecimal format
  *
  * Author: Alexander DuPre
  *
@@ -10,32 +11,26 @@
 #ifndef BIGINT_H
 #define BIGINT_H
 
+#define BIGINT_RADIX 16
+
 #include <stdint.h>
 
-#ifdef BIGINT__8bit
-typedef uint8_t bucket_t;
-typedef int8_t  int_val;
-#define BUCKET_WIDTH 8
-#define BUCKET_MAX_SIZE UINT8_MAX
-#define INT_VAL_MAX INT8_MAX
-#define INT_VAL_MIN INT8_MIN
-#else
-    #ifdef BIGINT__x64
-        typedef uint64_t bucket_t;
-        typedef int64_t  int_val;
-        #define BUCKET_WIDTH 64
-        #define BUCKET_MAX_SIZE UINT64_MAX
-        #define INT_VAL_MAX INT64_MAX
-        #define INT_VAL_MIN INT64_MIN
-    #else // BIGINT__x86
-        typedef uint32_t bucket_t;
-        typedef int32_t  int_val;
-        #define BUCKET_WIDTH 32
-        #define BUCKET_MAX_SIZE UINT32_MAX
-        #define INT_VAL_MAX INT32_MAX
-        #define INT_VAL_MIN INT32_MIN
-    #endif // BIGINT__x64
-#endif // BIGINT__8Bit
+#if defined(BIGINT__8bit)
+    typedef uint8_t bucket_t;
+    typedef int8_t  int_val;
+    #define BUCKET_WIDTH 8
+    #define BUCKET_MAX_SIZE UINT8_MAX
+#elif defined(BIGINT__x64)
+    typedef uint64_t bucket_t;
+    typedef int64_t  int_val;
+    #define BUCKET_WIDTH 64
+    #define BUCKET_MAX_SIZE UINT64_MAX
+#else // BIGINT__x86
+    typedef uint32_t bucket_t;
+    typedef int32_t  int_val;
+    #define BUCKET_WIDTH 32
+    #define BUCKET_MAX_SIZE UINT32_MAX
+#endif // BIGINT__SIZE
 
 /*
  * bucket_t is an unsigned integral type that represents portions of the BigInt
@@ -60,8 +55,8 @@ BigInt* empty_BigInt();
 // Returns allocated BigInt with stored value, if malloc fails returns NULL
 BigInt* val_BigInt(bucket_t num);
 
-// Returns allocated BigInt with num converted to a value. Returns NULL if malloc
-// fails, num isn't a number, or the base isn't hex, decimal
+// Returns BigInt with value represented by num. Returns NULL if malloc fails, 
+// and BigInt with 0 value if num isn't a hexadecimal string
 BigInt* str_BigInt(const char* num, int base);
 
 // Resets all buckets to 0, returns num
@@ -75,14 +70,11 @@ void free_BigInt(BigInt* num);
 // Returns number of allocated buckets. 0 if num is NULL
 int buckets(BigInt* num);
 
-// sign < 0 if negative sign >= 0 if postive. 0 is included in postive range
+// sign < 0 if negative sign > 0 if postive. 0 is returned if num is NULL
 int sign(BigInt* num);
 
-// Returns -1 if num is NULL or base isn't hex or decimal
-int digits(BigInt* num, int base);
- 
-// Returns -1 if base isn't hex or decimal
-int count_digits(long num, int base);
+// Returns -1 if num is NULL or base is invalid
+int hex_digits(BigInt* num);
 
 // Returns 0 if equal. < 0 if (lhs < rhs) and > 0 if (lhs > rhs)
 int compare_int(BigInt* lhs, int_val rhs);
@@ -90,6 +82,8 @@ int compare_uint(BigInt* lhs, bucket_t rhs);
 int compare_bigint(BigInt* lhs, BigInt* rhs);
 
 #ifdef MOCKING_ENABLED
+// mock_bigint allows static functions and private members to be visible during
+// unit tests
 typedef struct mock_bigint {
     int (*char_to_num)(char, int);
     int (*format_string)(const char*, const char**, const char**, int);
@@ -97,6 +91,7 @@ typedef struct mock_bigint {
 } mock_bigint;
 
 extern const mock_bigint m_bigint;
+
 #endif // MOCKING_ENABLED
 
 #endif // BIGINT_H

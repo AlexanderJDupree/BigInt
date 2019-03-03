@@ -36,9 +36,7 @@ TEST_CASE("Constructing BigInt's with values <= BUCKET_MAX_SIZE", "[constructors
     {
         BigInt* num = empty_BigInt();
 
-        // 0 is still a digit count of 1
-        REQUIRE(digits(num, 10) == 1);
-        REQUIRE(buckets(num) == 1);
+        REQUIRE(compare_int(num, 0) == 0);
 
         free_BigInt(num);
     }
@@ -46,13 +44,13 @@ TEST_CASE("Constructing BigInt's with values <= BUCKET_MAX_SIZE", "[constructors
     {
         BigInt* num = reserve_BigInt(42);
         REQUIRE(buckets(num) == 42);
+        free_BigInt(num);
     }
     SECTION("Value constructor instantiates BigInt with specified value")
     {
         int test_val = 123;
         BigInt* num = val_BigInt(test_val);
 
-        REQUIRE(digits(num, 10) == 3);
         REQUIRE(compare_int(num, test_val) == 0);
 
         free_BigInt(num);
@@ -73,7 +71,7 @@ TEST_CASE("Constructing BigInt's with values <= BUCKET_MAX_SIZE", "[constructors
         REQUIRE(compare_uint(num, test_val) == 0);
         free_BigInt(num);
     }
-    SECTION("Consturction without '0x' prefix on hexadeciamal string")
+    SECTION("Consturction without '0x' prefix on hexadecimal string")
     {
         int test_val = 0xff;
         const char* test_str = "ff";
@@ -94,12 +92,55 @@ TEST_CASE("Constructing BigInt's with values <= BUCKET_MAX_SIZE", "[constructors
     }
 }
 
+TEST_CASE("Determining sign of a BigInt", "[sign]")
+{
+    SECTION("Negative BigInt returns sign < 0")
+    {
+        BigInt* num = str_BigInt("-0xffff", 16);
+        REQUIRE(sign(num) < 0);
+        free_BigInt(num);
+
+    }
+    SECTION("Positive BigInt returns sign > 0")
+    {
+        BigInt* num = str_BigInt("0xffff", 16);
+        REQUIRE(sign(num) > 0);
+        free_BigInt(num);
+    }
+    SECTION("Empty BigInt returns sign > 0")
+    {
+        BigInt* num = empty_BigInt();
+        REQUIRE(sign(num) > 0);
+        free_BigInt(num);
+    }
+    SECTION("Passing NULL to sign() returns 0")
+    {
+        BigInt* num = NULL;
+        REQUIRE(sign(num) == 0);
+    }
+}
+
+TEST_CASE("Determining the number of hex_digits in a BigInt", "[hex_digits]")
+{
+    SECTION("Number of hexadecimal digits")
+    {
+        // 81985529216486895 DEC
+        BigInt* num = str_BigInt("0x123456789abcdef", 16);
+        int digits = hex_digits(num);
+        REQUIRE(digits == 15);
+        free_BigInt(num);
+    }
+}
+
 #ifdef MOCKING_ENABLED
 
 TEST_CASE("Constructing BigInts with values > BUCKET_MAX_SIZE", "[constructors]")
 {
-#ifdef BIGINT__8bit // Debug bucket is 8 bits wide. 
-    SECTION("Debug bucket size + 1 allocates 2 buckets")
+    // To make these tests easier to write/debug most of them are written only 
+    // for the 8bit configuration, the final composite test tests all 
+    // configurations.
+#ifdef BIGINT__8bit 
+    SECTION("Even number of digits")
     {
         const char* test_str = "0x1000";
         BigInt* num = str_BigInt(test_str, 16);
