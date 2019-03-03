@@ -1,6 +1,11 @@
 # Binaries
 bin/
+*.o
+*.exe
 
 # Project files
 gmake/
 vs*/
+
+# Swap files
+*.swp

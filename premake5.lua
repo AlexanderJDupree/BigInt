@@ -7,33 +7,43 @@
 
 -- WORKSPACE CONFIGURATION --
 workspace "BigInt"
-    configurations { "Debug", "Release" }
-    platforms { "x64", "x86" }
+    configurations { "debug", "release" }
+    platforms { "x64", "x86", "8bit" }
+
+    if _ACTION == "clean" then
+        os.rmdir("bin/")
+        os.rmdir("gmake/")
+        os.rmdir("gmake2/")
+    end
 
     local project_action = "UNDEFINED"
     if _ACTION ~= nill then project_action = _ACTION end
 
     location (project_action)
 
-    -- Remove -- to put gmake files at top directory
-    -- filter "action:gmake*" 
-     --   location "."
-
     -- PLATFORM CONFIGURATIONS --
-    filter "x64"
+    filter "platforms:x64"
         defines "BIGINT__x64"
         architecture "x86_64"
 
-    filter "x86" 
+    filter "platforms:x86" 
         defines "BIGINT__x86"
         architecture "x86"
+
+    filter "platforms:8bit"
+        defines "BIGINT__8bit"
 
     -- COMPILER/LINKER CONFIG --
     flags "FatalWarnings"
     warnings "Extra"
 
-    filter "configurations:Debug*" defines   { "DEBUG" } symbols "On"
-    filter "configurations:Release*" defines { "NDEBUG" } optimize "On"
+    filter "configurations:debug*"   
+        defines { "DEBUG", "MOCKING_ENABLED" } 
+        symbols "On"
+
+    filter "configurations:release*" 
+        defines { "NDEBUG" } 
+        optimize "On"
 
     filter "toolset:gcc"
         buildoptions { 
@@ -45,9 +55,8 @@ workspace "BigInt"
 project "BigInt"
     kind "StaticLib"
     language "C"
-    targetdir "bin/%{cfg.architecture}/%{cfg.buildcfg}"
-    targetname "BigInt"
-    buildoptions "-std=c11"
+    targetdir "bin/%{cfg.buildcfg}/lib"
+    targetname "BigInt_%{cfg.platform}"
 
     local source = "src/"
     local include = "include/"
@@ -64,8 +73,8 @@ project "Tests"
     kind "ConsoleApp"
     language "C++"
     links "BigInt"
-    targetdir "bin/%{cfg.architecture}/tests/"
-    targetname "test_%{cfg.shortname}"
+    targetdir "bin/tests/"
+    targetname "%{cfg.buildcfg}_%{cfg.platform}_tests"
 
     local include  = "include/"
     local test_src = "tests/"
@@ -75,9 +84,10 @@ project "Tests"
 
     includedirs { test_inc, include }
 
+    postbuildcommands ".././bin/tests/%{cfg.buildcfg}_%{cfg.platform}_tests"
+
     filter { "action:gmake or action:gmake2" }
         buildoptions "-std=c++11"
-        postbuildcommands ".././bin/%{cfg.architecture}/tests/test_%{cfg.shortname}"
 
     filter {} -- close filter
 
