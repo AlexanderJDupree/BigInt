@@ -43,6 +43,11 @@ If the GNU makefiles suffice, then you can generate the File_Reader static libra
 cd gmake/ && make
 ```
 
+By default make will build the debug_x64 build. To get a list of configurations run 'make help'. Then to build, for example, release_x64 run:
+```
+make config=release_x64
+```
+
 I've included a postbuild command in premake5.lua that will run the unit tests automatically, however if you want to rerun the tests they are located in bin/tests/
 
 ## Built With
