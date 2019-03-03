@@ -12,7 +12,7 @@
 
 #include <stdint.h>
 
-#ifdef DEBUG
+#ifdef BIGINT__8bit
 typedef uint8_t bucket_t;
 typedef int8_t  int_val;
 #define BUCKET_WIDTH 8
@@ -35,7 +35,7 @@ typedef int8_t  int_val;
         #define INT_VAL_MAX INT32_MAX
         #define INT_VAL_MIN INT32_MIN
     #endif // BIGINT__x64
-#endif // DEBUG
+#endif // BIGINT__8Bit
 
 /*
  * bucket_t is an unsigned integral type that represents portions of the BigInt
@@ -58,11 +58,14 @@ BigInt* reserve_BigInt(bucket_t buckets);
 BigInt* empty_BigInt();
 
 // Returns allocated BigInt with stored value, if malloc fails returns NULL
-BigInt* val_BigInt(int_val num);
+BigInt* val_BigInt(bucket_t num);
 
 // Returns allocated BigInt with num converted to a value. Returns NULL if malloc
 // fails, num isn't a number, or the base isn't hex, decimal
 BigInt* str_BigInt(const char* num, int base);
+
+// Resets all buckets to 0, returns num
+BigInt* clear_BigInt(BigInt* num);
 
 // Returns a BigInt with the computed factorial value
 BigInt* factorial(long n);
@@ -83,9 +86,19 @@ int count_digits(long num, int base);
 
 // Returns 0 if equal. < 0 if (lhs < rhs) and > 0 if (lhs > rhs)
 int compare_int(BigInt* lhs, int_val rhs);
+int compare_uint(BigInt* lhs, bucket_t rhs);
 int compare_bigint(BigInt* lhs, BigInt* rhs);
 
 // Returns -1 if there is no valid conversion
 int char_to_num(char c, int base);
+
+#ifdef UNIT_TESTS
+typedef struct mock_bigint {
+    int (*format_string)(const char*, const char**, const char**, int);
+    bucket_t* (*get_buckets)(BigInt* num);
+} mock_bigint;
+
+extern const mock_bigint m_bigint;
+#endif // UNIT_TESTS
 
 #endif // BIGINT_H
