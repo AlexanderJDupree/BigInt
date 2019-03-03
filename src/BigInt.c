@@ -23,6 +23,10 @@ struct BigInt
 
 static int count_hex_digits(bucket_t num)
 {
+    if(num == 0)
+    {
+        return 1;
+    }
     //stackoverflow.com/questions/9721042/
     //count-number-of-digits-which-method-is-most-efficient/
 #ifdef BIGINT__x64
@@ -54,7 +58,7 @@ static bucket_t string_to_num(const char* str_num, int base)
 }
 
 // Points start to the first character of the string, and end to the last
-static int format_string(const char* str, const char** start, const char** end, int base)
+static int format_string(const char* str, const char** start, const char** end)
 {
     if(str && start && end)
     {
@@ -74,18 +78,21 @@ static int format_string(const char* str, const char** start, const char** end, 
         }
 
         // Allows hex strings to be prefixed with 0x. TODO allow other prefixes
-        if(str[i + 1] == 'x' && base == 16)
+        if(str[i + 1] == 'x' && str[i] == '0')
         {
             i += 2;
         }
 
+        // Strip leading zeroes
         while(str[i] == '0')
         {
             ++i;
         }
 
+        // String was all zeroes
         if(str[i] == '\0')
         {
+            *start = *end = str + i;
             return 0;
         }
 
@@ -148,7 +155,12 @@ BigInt* str_BigInt(const char* str_num, int base)
 
     const char* start = NULL;
     const char* end = NULL;
-    int8_t sign = format_string(str_num, & start, &end, base);
+    int8_t sign = format_string(str_num, & start, &end);
+
+    if(start == end) // String was all zeroes
+    {
+        return empty_BigInt();
+    }
 
     // sign is zero if format_string failed
     if(base < 2 || base > 36 || sign == 0)
@@ -264,8 +276,12 @@ int compare_uint(BigInt* lhs, bucket_t rhs)
 
 int compare_int(BigInt* lhs, int_val rhs)
 {
-    rhs = labs(rhs);
-    return compare_uint(lhs, rhs);
+    if(lhs)
+    {
+        return (lhs->sign < 0 && rhs > 0 ) ? 
+                compare_uint(lhs, labs(rhs)) * -1 : compare_uint(lhs, labs(rhs));
+    }
+    return rhs;
 }
 
 #ifdef MOCKING_ENABLED

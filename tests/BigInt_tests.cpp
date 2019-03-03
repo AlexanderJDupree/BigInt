@@ -126,8 +126,18 @@ TEST_CASE("Determining the number of hex_digits in a BigInt", "[hex_digits]")
     {
         // 81985529216486895 DEC
         BigInt* num = str_BigInt("0x123456789abcdef", 16);
-        int digits = hex_digits(num);
-        REQUIRE(digits == 15);
+        REQUIRE(hex_digits(num) == 15);
+        free_BigInt(num);
+    }
+    SECTION("Passing null to hex_digits return -1")
+    {
+        REQUIRE(hex_digits(NULL) == -1);
+    }
+    SECTION("Number of hex_digits on a zero valued bigint = 1")
+    {
+        BigInt* num = str_BigInt("0x000000000000000000", 16);
+        REQUIRE(num != NULL);
+        REQUIRE(hex_digits(num) == 1);
         free_BigInt(num);
     }
 }
@@ -306,54 +316,54 @@ TEST_CASE("Formatting string input" , "[format_string]")
     SECTION("Valid string")
     {
         const char* str = "123456789";
-        REQUIRE(m_bigint.format_string(str, &start, &end, 10) == 1);
+        REQUIRE(m_bigint.format_string(str, &start, &end) == 1);
         REQUIRE(*start == '1');
         REQUIRE(*end == '\0');
     }
     SECTION("Strings prefixed with '-' return -1 and point start to first valid char")
     {
         const char* str = "-123456789";
-        REQUIRE(m_bigint.format_string(str, &start, &end, 10) == -1);
+        REQUIRE(m_bigint.format_string(str, &start, &end) == -1);
         REQUIRE(*start == '1');
         REQUIRE(*end == '\0');
     }
     SECTION("Strings prefixed with '0x' point start to first valid character")
     {
         const char* str = "0x123456abcdef";
-        REQUIRE(m_bigint.format_string(str, &start, &end, 16) == 1);
+        REQUIRE(m_bigint.format_string(str, &start, &end) == 1);
         REQUIRE(*start == '1');
         REQUIRE(*end == '\0');
     }
     SECTION("leading/trailing whitespace")
     {
         const char* str = "    \t\n0xff   \n\t ";
-        REQUIRE(m_bigint.format_string(str, &start, &end, 16) == 1);
+        REQUIRE(m_bigint.format_string(str, &start, &end) == 1);
         REQUIRE(*start == 'f');
         REQUIRE(*(end - 1) == 'f');
     }
     SECTION("string of only whitespace returns 0")
     {
         const char* str = "     ";
-        REQUIRE(m_bigint.format_string(str, &start, &end, 10) == 0);
+        REQUIRE(m_bigint.format_string(str, &start, &end) == 0);
     }
     SECTION("String with whitespace, in prefixed with -0x")
     {
         const char* str = "   \n\t-0x1234fff  ";
-        REQUIRE(m_bigint.format_string(str, &start, &end, 16) == -1);
+        REQUIRE(m_bigint.format_string(str, &start, &end) == -1);
         REQUIRE(*start == '1');
         REQUIRE(*(end - 1) == 'f');
     }
     SECTION("Leading zeroes are ignored")
     {
         const char* str = "0x000000100ff";
-        REQUIRE(m_bigint.format_string(str, &start, &end, 16) == 1);
+        REQUIRE(m_bigint.format_string(str, &start, &end) == 1);
         REQUIRE(*start == '1');
         REQUIRE(*end == '\0');
     }
     SECTION("String with only valid prefixes returns 0")
     {
         const char* str = "    -0x";
-        REQUIRE(m_bigint.format_string(str, &start, &end, 16) == 0);
+        REQUIRE(m_bigint.format_string(str, &start, &end) == 0);
     }
 }
 

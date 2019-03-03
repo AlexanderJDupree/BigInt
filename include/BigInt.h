@@ -86,7 +86,7 @@ int compare_bigint(BigInt* lhs, BigInt* rhs);
 // unit tests
 typedef struct mock_bigint {
     int (*char_to_num)(char, int);
-    int (*format_string)(const char*, const char**, const char**, int);
+    int (*format_string)(const char*, const char**, const char**);
     bucket_t* (*get_buckets)(BigInt* num);
 } mock_bigint;
 
