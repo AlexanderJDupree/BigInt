@@ -7,9 +7,8 @@
  *
  */
 
-#include <math.h>
-#include <errno.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "BigInt.h"
@@ -18,11 +17,29 @@
 struct BigInt
 {
     bucket_t* value;
-    size_t digits;
     size_t nbuckets;
     int8_t sign;
 };
 
+static int count_hex_digits(bucket_t num)
+{
+    if(num == 0)
+    {
+        return 1;
+    }
+
+    //stackoverflow.com/questions/9721042/
+    //count-number-of-digits-which-method-is-most-efficient/
+    // There was a number of different methodoligies suggested, this one was
+    // the easiest to implement
+#ifdef BIGINT__x64
+    return snprintf(NULL, 0, "%lx", num);
+#else
+    return snprintf(NULL, 0, "%x", num);
+#endif
+}
+
+// Deprecated now that BigInt only supports hexadecimal input
 static int char_to_num(char c, int base)
 {
     c = tolower(c);
@@ -37,60 +54,70 @@ static int char_to_num(char c, int base)
            (c >= 'a'&& c <= upper_alphabetic_limit) ? c - 'a' + 10 : -1;
 }
 
-static bucket_t string_to_num(const char* str_num, int base)
+static int hex_value(char c)
 {
-    const char** endptr = &str_num;
-    bucket_t num = labs(strtol(str_num, (char**) endptr, base));
-    return (**endptr == '\0') ? num : 0;
+    return (c >= '0' && c <= '9') ? c - '0' :
+           ((c = tolower(c)) >= 'a' && c <= 'f') ? c - 'a' + 10 : -1;
+}
+
+static int iszero(int c)
+{
+    return c == '0';
+}
+
+static const char* strip_character(const char* str, int (*istarget)(int c))
+{
+    if(str)
+    {
+        while(istarget(*str))
+        {
+            ++str;
+        }
+    }
+    return str;
+}
+
+static const char* strip_negative_and_store(const char* str, int* sign)
+{
+    if(str && *str == '-')
+    {
+        *sign = -1;
+        ++str;
+    }
+    return str;
+}
+
+static const char* strip_hex_prefix(const char* str)
+{
+    if(str && *str == '0' && *(str + 1) == 'x')
+    {
+        str += 2;
+    }
+    return str;
 }
 
 // Points start to the first character of the string, and end to the last
-static int format_string(const char* str, const char** start, const char** end, int base)
+static int format_string(const char* str, const char** start, const char** end)
 {
     if(str && start && end)
     {
-        int i = -1;
         int sign = 1;
-        while(isspace(str[++i]));
 
-        if (str[i] == '-')
-        {
-            sign = -1;
-            ++i;
-        }
+        // Strips white space, strips negative and stores into sign, strips
+        // hex prefix, then finally strips leading zeroes
+        str = strip_negative_and_store(strip_character(str, isspace), &sign);
+        str = strip_character(strip_hex_prefix(str), iszero);
 
-        if (str[i] == '\0') // String was all spaces
+        if (*str == '\0') // String is invalid
         {
             return 0;
         }
 
-        // Allows hex strings to be prefixed with 0x. TODO allow other prefixes
-        if(str[i + 1] == 'x' && base == 16)
-        {
-            i += 2;
-        }
+        *start = str;
 
-        while(str[i] == '0')
-        {
-            ++i;
-        }
-
-        if(str[i] == '\0')
-        {
-            return 0;
-        }
-
-        *start = str + i;
-
-        // TODO this will allow strings like "123,./" through. Examine if this 
-        // behavior is wanted. *start = 1, *end = ,.
-        while(isalnum(str[i]))
-        {
-            ++i;
-        }
-
-        *end = str + i;
-        return sign;
+        // sets end pointer to one past last alphanumeric character
+        *end = strip_character(str, isxdigit);
+        return (**end == '\0' || isspace(**end)) ? sign : 0;
     }
     return 0;
 }
@@ -103,6 +130,38 @@ static bucket_t* allocate_buckets(size_t buckets)
         bucket[i] = 0;
     }
     return bucket;
+}
+
+static const char* fill_buckets(const char* start, const char* end, 
+                                bucket_t* buckets, size_t* nbuckets)
+{
+        bucket_t bucket = 0;
+        int digits_per_bucket = 2 * sizeof(bucket_t);
+        int digits_to_process = (start != end) ? digits_per_bucket : 0;
+
+        for (; start < end; ++start)
+        {
+            int digit = hex_value(*start);
+            // digit will always be valid, string was checked for non hex digits 
+
+            bucket = (bucket << 4) | digit;
+
+            if(--digits_to_process == 0)
+            {
+                // Dump bucket
+                buckets[--(*nbuckets)] = bucket;
+                bucket = 0;
+
+                // Don't reset counter if this is the last iteration
+                digits_to_process = (start + 1 != end) ? digits_per_bucket : 0;
+            }
+        }
+        if(digits_to_process > 0)
+        {
+            // Dump remaining values in bucket
+            buckets[--(*nbuckets)] = bucket;
+        }
+        return start;
 }
 
 BigInt* reserve_BigInt(bucket_t buckets)
@@ -132,67 +191,31 @@ BigInt* val_BigInt(bucket_t num)
     return new_int;
 }
 
-BigInt* str_BigInt(const char* str_num, int base)
+BigInt* str_BigInt(const char* str_num)
 {
-    // TODO refactor algorithm to support conversion of different bases
-    if (base != 16) return NULL;
-
     const char* start = NULL;
     const char* end = NULL;
-    int8_t sign = format_string(str_num, & start, &end, base);
-
-    // sign is zero if format_string failed
-    if(base < 2 || base > 36 || sign == 0)
+    int8_t sign = format_string(str_num, &start, &end);
+    
+    if(sign == 0) // format_string failed, do not parse string
     {
-        return NULL;
+        return empty_BigInt();
     }
 
     size_t digits = end - start;
     size_t digits_per_bucket = 2 * sizeof(bucket_t); 
     size_t nbuckets = (digits + digits_per_bucket - 1) / digits_per_bucket;
-    if(nbuckets == 1)
-    {
-        BigInt* new_int = val_BigInt(string_to_num(str_num, base));
-        new_int->sign = sign;
-        return new_int;
-    }
 
     BigInt* new_int = reserve_BigInt(nbuckets);
-    
     if(new_int)
     {
-        bucket_t total= 0;
-        for(size_t i = 0; i < digits % digits_per_bucket; ++i)
-        {
-            int_val digit = char_to_num(*(start++), base);
-            if(digit == -1)
-            {
-                return clear_BigInt(new_int);
-            }
-            total |= digit << (BUCKET_WIDTH - (4 * (i + 2)));
-        }
+        new_int->sign = sign;
+        const char* overhang = start + (digits % digits_per_bucket);
 
-        if(total != 0)
-        {
-            new_int->value[--nbuckets] = total;
-        }
-
-        for (; start < end; start += digits_per_bucket)
-        {
-            total = 0;
-            for(size_t i = 0; i < digits_per_bucket; ++i)
-            {
-                int_val digit = char_to_num(*(start + i), base);
-                if( digit == -1 )
-                {
-                    return clear_BigInt(new_int);
-                }
-                total |= digit << (BUCKET_WIDTH - (4 * (i + 1)));
-            }
-            new_int->value[--nbuckets] = total;
-        }
+        // Fills buckets from start - overhang then from overhang to end
+        fill_buckets(fill_buckets(start, overhang, new_int->value, &nbuckets), 
+                     end, new_int->value, &nbuckets);
     }
-    new_int->sign = sign;
     return new_int;
 }
 
@@ -220,27 +243,20 @@ int buckets(BigInt* num)
 
 int sign(BigInt* num)
 {
-    return num->sign;
+    return (num != NULL) ? num->sign : 0;
 }
 
-int digits(BigInt* num, int base)
+int hex_digits(BigInt* num)
 {
-    return (num != NULL) ? count_digits(num->value[num->nbuckets - 1], base) : -1;
-}
-
-int count_digits(long num, int base)
-{
-    num = labs(num); // labs : long absolute value
-    if(base == 10 || base == 16)
+    if(num != NULL)
     {
-        int digits = 1;
-        int power = 1;
-        while(num / power >= base)
-        {
-            ++digits;
-            power *= base;
-        }
-        return digits;
+        // Finds the leading bucket value
+        size_t i = num->nbuckets - 1;
+        for(; i > 0  && num->value[i] == 0; --i);
+
+        // Return leading digits plus the number of digits for each full bucket
+        return count_hex_digits(num->value[i]) 
+               + (num->nbuckets - (num->nbuckets - i)) * 2 * sizeof(bucket_t);
     }
     return -1;
 }
@@ -262,8 +278,12 @@ int compare_uint(BigInt* lhs, bucket_t rhs)
 
 int compare_int(BigInt* lhs, int_val rhs)
 {
-    rhs = labs(rhs);
-    return compare_uint(lhs, rhs);
+    if(lhs)
+    {
+        return (lhs->sign < 0 && rhs > 0 ) ? 
+                compare_uint(lhs, labs(rhs)) * -1 : compare_uint(lhs, labs(rhs));
+    }
+    return rhs;
 }
 
 #ifdef MOCKING_ENABLED
