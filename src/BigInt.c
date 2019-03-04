@@ -29,6 +29,8 @@ static int count_hex_digits(bucket_t num)
     }
     //stackoverflow.com/questions/9721042/
     //count-number-of-digits-which-method-is-most-efficient/
+    // There was a number of different methodoligies suggested, this one was
+    // the easiest to implement
 #ifdef BIGINT__x64
     return snprintf(NULL, 0, "%lx", num);
 #else
@@ -53,8 +55,44 @@ static int char_to_num(char c, int base)
 static bucket_t string_to_num(const char* str_num, int base)
 {
     const char** endptr = &str_num;
-    bucket_t num = labs(strtol(str_num, (char**) endptr, base));
+    bucket_t num = strtoul(str_num, (char**) endptr, base);
     return (**endptr == '\0') ? num : 0;
+}
+
+static int iszero(int c)
+{
+    return c == '0';
+}
+
+static const char* strip_character(const char* str, int (*istarget)(int c))
+{
+    if(str)
+    {
+        while(istarget(*str))
+        {
+            ++str;
+        }
+    }
+    return str;
+}
+
+static const char* strip_negative_and_store(const char* str, int* sign)
+{
+    if(str && *str == '-')
+    {
+        *sign = -1;
+        ++str;
+    }
+    return str;
+}
+
+static const char* strip_hex_prefix(const char* str)
+{
+    if(str && *str == '0' && *(str + 1) == 'x')
+    {
+        str += 2;
+    }
+    return str;
 }
 
 // Points start to the first character of the string, and end to the last
@@ -62,50 +100,22 @@ static int format_string(const char* str, const char** start, const char** end)
 {
     if(str && start && end)
     {
-        int i = -1;
         int sign = 1;
-        while(isspace(str[++i]));
 
-        if (str[i] == '-')
-        {
-            sign = -1;
-            ++i;
-        }
+        // Strips white space, strips negative and stores into sign, strips
+        // hex prefix, then finally strips leading zeroes
+        str = strip_negative_and_store(strip_character(str, isspace), &sign);
+        str = strip_character(strip_hex_prefix(str), iszero);
 
-        if (str[i] == '\0') // String was all spaces
+        if (*str == '\0') // String is invalid
         {
             return 0;
         }
 
-        // Allows hex strings to be prefixed with 0x. TODO allow other prefixes
-        if(str[i + 1] == 'x' && str[i] == '0')
-        {
-            i += 2;
-        }
+        *start = str;
 
-        // Strip leading zeroes
-        while(str[i] == '0')
-        {
-            ++i;
-        }
-
-        // String was all zeroes
-        if(str[i] == '\0')
-        {
-            *start = *end = str + i;
-            return 0;
-        }
-
-        *start = str + i;
-
-        // TODO this will allow strings like "123,./" through. Examine if this 
-        // behavior is wanted. *start = 1, *end = ,.
-        while(isalnum(str[i]))
-        {
-            ++i;
-        }
-
-        *end = str + i;
+        // sets end pointer to one past last alphanumeric character
+        *end = strip_character(str, isalnum);
         return sign;
     }
     return 0;
@@ -155,9 +165,9 @@ BigInt* str_BigInt(const char* str_num, int base)
 
     const char* start = NULL;
     const char* end = NULL;
-    int8_t sign = format_string(str_num, & start, &end);
+    int8_t sign = format_string(str_num, &start, &end);
 
-    if(start == end) // String was all zeroes
+    if(start == end) // format_string failed
     {
         return empty_BigInt();
     }
@@ -173,7 +183,7 @@ BigInt* str_BigInt(const char* str_num, int base)
     size_t nbuckets = (digits + digits_per_bucket - 1) / digits_per_bucket;
     if(nbuckets == 1)
     {
-        BigInt* new_int = val_BigInt(string_to_num(str_num, base));
+        BigInt* new_int = val_BigInt(string_to_num(start, 16));
         new_int->sign = sign;
         return new_int;
     }
@@ -185,7 +195,7 @@ BigInt* str_BigInt(const char* str_num, int base)
         bucket_t total= 0;
         for(size_t i = 0; i < digits % digits_per_bucket; ++i)
         {
-            int_val digit = char_to_num(*(start++), base);
+            int_val digit = char_to_num(*(start++), BIGINT_RADIX);
             if(digit == -1)
             {
                 return clear_BigInt(new_int);
@@ -203,7 +213,7 @@ BigInt* str_BigInt(const char* str_num, int base)
             total = 0;
             for(size_t i = 0; i < digits_per_bucket; ++i)
             {
-                int_val digit = char_to_num(*(start + i), base);
+                int_val digit = char_to_num(*(start + i), BIGINT_RADIX);
                 if( digit == -1 )
                 {
                     return clear_BigInt(new_int);
