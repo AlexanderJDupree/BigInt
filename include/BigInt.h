@@ -55,9 +55,9 @@ BigInt* empty_BigInt();
 // Returns allocated BigInt with stored value, if malloc fails returns NULL
 BigInt* val_BigInt(bucket_t num);
 
-// Returns BigInt with value represented by num. Returns NULL if malloc fails, 
-// and BigInt with 0 value if num isn't a hexadecimal string
-BigInt* str_BigInt(const char* num, int base);
+// Returns BigInt with value represented by num. Returns empty_BigInt() if num
+// cannot be converted
+ BigInt* str_BigInt(const char* num);
 
 // Resets all buckets to 0, returns num
 BigInt* clear_BigInt(BigInt* num);

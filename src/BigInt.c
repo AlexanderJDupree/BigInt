@@ -27,6 +27,7 @@ static int count_hex_digits(bucket_t num)
     {
         return 1;
     }
+
     //stackoverflow.com/questions/9721042/
     //count-number-of-digits-which-method-is-most-efficient/
     // There was a number of different methodoligies suggested, this one was
@@ -38,6 +39,7 @@ static int count_hex_digits(bucket_t num)
 #endif
 }
 
+// Deprecated now that BigInt only supports hexadecimal input
 static int char_to_num(char c, int base)
 {
     c = tolower(c);
@@ -52,11 +54,10 @@ static int char_to_num(char c, int base)
            (c >= 'a'&& c <= upper_alphabetic_limit) ? c - 'a' + 10 : -1;
 }
 
-static bucket_t string_to_num(const char* str_num, int base)
+static int hex_value(char c)
 {
-    const char** endptr = &str_num;
-    bucket_t num = strtoul(str_num, (char**) endptr, base);
-    return (**endptr == '\0') ? num : 0;
+    return (c >= '0' && c <= '9') ? c - '0' :
+           ((c = tolower(c)) >= 'a' && c <= 'f') ? c - 'a' + 10 : -1;
 }
 
 static int iszero(int c)
@@ -115,8 +116,8 @@ static int format_string(const char* str, const char** start, const char** end)
         *start = str;
 
         // sets end pointer to one past last alphanumeric character
-        *end = strip_character(str, isalnum);
-        return sign;
+        *end = strip_character(str, isxdigit);
+        return (**end == '\0' || isspace(**end)) ? sign : 0;
     }
     return 0;
 }
@@ -129,6 +130,38 @@ static bucket_t* allocate_buckets(size_t buckets)
         bucket[i] = 0;
     }
     return bucket;
+}
+
+static const char* fill_buckets(const char* start, const char* end, 
+                                bucket_t* buckets, size_t* nbuckets)
+{
+        bucket_t bucket = 0;
+        int digits_per_bucket = 2 * sizeof(bucket_t);
+        int digits_to_process = (start != end) ? digits_per_bucket : 0;
+
+        for (; start < end; ++start)
+        {
+            int digit = hex_value(*start);
+            // digit will always be valid, string was checked for non hex digits 
+
+            bucket = (bucket << 4) | digit;
+
+            if(--digits_to_process == 0)
+            {
+                // Dump bucket
+                buckets[--(*nbuckets)] = bucket;
+                bucket = 0;
+
+                // Don't reset counter if this is the last iteration
+                digits_to_process = (start + 1 != end) ? digits_per_bucket : 0;
+            }
+        }
+        if(digits_to_process > 0)
+        {
+            // Dump remaining values in bucket
+            buckets[--(*nbuckets)] = bucket;
+        }
+        return start;
 }
 
 BigInt* reserve_BigInt(bucket_t buckets)
@@ -158,72 +191,31 @@ BigInt* val_BigInt(bucket_t num)
     return new_int;
 }
 
-BigInt* str_BigInt(const char* str_num, int base)
+BigInt* str_BigInt(const char* str_num)
 {
-    // TODO refactor algorithm to support conversion of different bases
-    if (base != 16) return NULL;
-
     const char* start = NULL;
     const char* end = NULL;
     int8_t sign = format_string(str_num, &start, &end);
-
-    if(start == end) // format_string failed
+    
+    if(sign == 0) // format_string failed, do not parse string
     {
         return empty_BigInt();
-    }
-
-    // sign is zero if format_string failed
-    if(base < 2 || base > 36 || sign == 0)
-    {
-        return NULL;
     }
 
     size_t digits = end - start;
     size_t digits_per_bucket = 2 * sizeof(bucket_t); 
     size_t nbuckets = (digits + digits_per_bucket - 1) / digits_per_bucket;
-    if(nbuckets == 1)
-    {
-        BigInt* new_int = val_BigInt(string_to_num(start, 16));
-        new_int->sign = sign;
-        return new_int;
-    }
 
     BigInt* new_int = reserve_BigInt(nbuckets);
-    
     if(new_int)
     {
-        bucket_t total= 0;
-        for(size_t i = 0; i < digits % digits_per_bucket; ++i)
-        {
-            int_val digit = char_to_num(*(start++), BIGINT_RADIX);
-            if(digit == -1)
-            {
-                return clear_BigInt(new_int);
-            }
-            total |= digit << (BUCKET_WIDTH - (4 * (i + 2)));
-        }
+        new_int->sign = sign;
+        const char* overhang = start + (digits % digits_per_bucket);
 
-        if(total != 0)
-        {
-            new_int->value[--nbuckets] = total;
-        }
-
-        for (; start < end; start += digits_per_bucket)
-        {
-            total = 0;
-            for(size_t i = 0; i < digits_per_bucket; ++i)
-            {
-                int_val digit = char_to_num(*(start + i), BIGINT_RADIX);
-                if( digit == -1 )
-                {
-                    return clear_BigInt(new_int);
-                }
-                total |= digit << (BUCKET_WIDTH - (4 * (i + 1)));
-            }
-            new_int->value[--nbuckets] = total;
-        }
+        // Fills buckets from start - overhang then from overhang to end
+        fill_buckets(fill_buckets(start, overhang, new_int->value, &nbuckets), 
+                     end, new_int->value, &nbuckets);
     }
-    new_int->sign = sign;
     return new_int;
 }
 

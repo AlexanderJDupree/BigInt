@@ -67,7 +67,7 @@ TEST_CASE("Constructing BigInt's with values <= BUCKET_MAX_SIZE", "[constructors
         int test_val = 0xff;
         const char* test_str = "0xff";
 
-        BigInt* num = str_BigInt(test_str, 16);
+        BigInt* num = str_BigInt(test_str);
         REQUIRE(compare_uint(num, test_val) == 0);
         free_BigInt(num);
     }
@@ -76,17 +76,13 @@ TEST_CASE("Constructing BigInt's with values <= BUCKET_MAX_SIZE", "[constructors
         int test_val = 0xff;
         const char* test_str = "ff";
 
-        BigInt* num = str_BigInt(test_str, 16);
+        BigInt* num = str_BigInt(test_str);
         REQUIRE(compare_uint(num, test_val) == 0);
         free_BigInt(num);
     }
-    SECTION("Construction with invalid base does not allocate BigInt")
-    {
-        REQUIRE(str_BigInt("0xff", 42) == NULL);
-    }
     SECTION("Invalid characters in string returns a BigInt with 0 value")
     {
-        BigInt* num = str_BigInt("0xffghl", 16);
+        BigInt* num = str_BigInt("0xffghl");
         REQUIRE(compare_uint(num, 0) == 0);
         free_BigInt(num);
     }
@@ -96,14 +92,13 @@ TEST_CASE("Determining sign of a BigInt", "[sign]")
 {
     SECTION("Negative BigInt returns sign < 0")
     {
-        BigInt* num = str_BigInt("-0xffff", 16);
+        BigInt* num = str_BigInt("-0xffff");
         REQUIRE(sign(num) < 0);
         free_BigInt(num);
-
     }
     SECTION("Positive BigInt returns sign > 0")
     {
-        BigInt* num = str_BigInt("0xffff", 16);
+        BigInt* num = str_BigInt("0xffff");
         REQUIRE(sign(num) > 0);
         free_BigInt(num);
     }
@@ -125,7 +120,7 @@ TEST_CASE("Determining the number of hex_digits in a BigInt", "[hex_digits]")
     SECTION("Number of hexadecimal digits")
     {
         // 81985529216486895 DEC
-        BigInt* num = str_BigInt("0x123456789abcdef", 16);
+        BigInt* num = str_BigInt("0x123456789abcdef");
         REQUIRE(hex_digits(num) == 15);
         free_BigInt(num);
     }
@@ -135,7 +130,7 @@ TEST_CASE("Determining the number of hex_digits in a BigInt", "[hex_digits]")
     }
     SECTION("Number of hex_digits on a zero valued bigint = 1")
     {
-        BigInt* num = str_BigInt("0x000000000000000000", 16);
+        BigInt* num = str_BigInt("0x000000000000000000");
         REQUIRE(num != NULL);
         REQUIRE(hex_digits(num) == 1);
         free_BigInt(num);
@@ -149,11 +144,11 @@ TEST_CASE("Constructing BigInts with values > BUCKET_MAX_SIZE", "[constructors]"
     // To make these tests easier to write/debug most of them are written only 
     // for the 8bit configuration, the final composite test tests all 
     // configurations.
-#ifdef BIGINT__8bit 
+    #ifdef BIGINT__8bit 
     SECTION("Even number of digits")
     {
         const char* test_str = "0x1000";
-        BigInt* num = str_BigInt(test_str, 16);
+        BigInt* num = str_BigInt(test_str);
 
         bucket_t* values = m_bigint.get_buckets(num);
 
@@ -167,7 +162,7 @@ TEST_CASE("Constructing BigInts with values > BUCKET_MAX_SIZE", "[constructors]"
         const char* test_str = "0x1234567";
         bucket_t expected_values[] = { 103, 69, 35, 1 };
 
-        BigInt* num = str_BigInt(test_str, 16);
+        BigInt* num = str_BigInt(test_str);
         bucket_t* values = m_bigint.get_buckets(num);
 
         REQUIRE(buckets(num) == 4);
@@ -183,7 +178,7 @@ TEST_CASE("Constructing BigInts with values > BUCKET_MAX_SIZE", "[constructors]"
         const char* test_str = "0x000000100ff";
         bucket_t expected_values[] = { 255, 0, 1 };
 
-        BigInt* num = str_BigInt(test_str, 16);
+        BigInt* num = str_BigInt(test_str);
         bucket_t* values = m_bigint.get_buckets(num);
 
         REQUIRE(buckets(num) == 3);
@@ -199,7 +194,7 @@ TEST_CASE("Constructing BigInts with values > BUCKET_MAX_SIZE", "[constructors]"
         const char* test_str = "-0x123456789abcdef";
         bucket_t expected_values[] = { 239, 205, 171, 137, 103, 69, 35, 1 };
 
-        BigInt* num = str_BigInt(test_str, 16);
+        BigInt* num = str_BigInt(test_str);
         bucket_t* values = m_bigint.get_buckets(num);
 
         REQUIRE(buckets(num) == 8);
@@ -210,31 +205,32 @@ TEST_CASE("Constructing BigInts with values > BUCKET_MAX_SIZE", "[constructors]"
 
         free_BigInt(num);
     }
-#endif
+    #endif
 
     SECTION("Composite Test")
     {
         const char* test_str = "\t\t  \n-001112233445566778899aabbccddeeff  \t";
-#ifdef BIGINT__8bit
+        #ifdef BIGINT__8bit
         uint8_t expected_values[] = {
             0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 
             0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x1
         };
         int nbuckets = 16;
-#else
-#ifdef BIGINT__x64
+        #else
+        #ifdef BIGINT__x64
         uint64_t expected_values[] = {
             0x8899aabbccddeeff, 0x111223344556677
         };
         int nbuckets = 2;
-#else // BIGINT__x86
+        #else // BIGINT__x86
         uint32_t expected_values[] = {
             0xccddeeff, 0x8899aabb, 0x44556677, 0x1112233
         };
         int nbuckets = 4;
-#endif
-#endif
-        BigInt* num = str_BigInt(test_str, 16);
+        #endif
+        #endif
+
+        BigInt* num = str_BigInt(test_str);
         bucket_t* values = m_bigint.get_buckets(num);
 
         REQUIRE(buckets(num) == nbuckets);
@@ -366,6 +362,5 @@ TEST_CASE("Formatting string input" , "[format_string]")
         REQUIRE(m_bigint.format_string(str, &start, &end) == 0);
     }
 }
-
 #endif
 
