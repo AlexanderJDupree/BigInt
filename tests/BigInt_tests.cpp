@@ -23,10 +23,10 @@ long long get_seed()
     return std::chrono::high_resolution_clock::now().time_since_epoch().count();
 }
 
-int_val any_int(int_val min, int_val max)
+sbucket_t any_int(sbucket_t min, sbucket_t max)
 {
     std::mt19937 generator(get_seed());
-    std::uniform_int_distribution<int_val> u_dist(min, max);
+    std::uniform_int_distribution<sbucket_t> u_dist(min, max);
     return u_dist(generator);
 }
 
@@ -38,12 +38,6 @@ TEST_CASE("Constructing BigInt's with values <= BUCKET_MAX_SIZE", "[constructors
 
         REQUIRE(compare_int(num, 0) == 0);
 
-        free_BigInt(num);
-    }
-    SECTION("Reserving space for a big int")
-    {
-        BigInt* num = reserve_BigInt(42);
-        REQUIRE(buckets(num) == 42);
         free_BigInt(num);
     }
     SECTION("Value constructor instantiates BigInt with specified value")
@@ -73,8 +67,8 @@ TEST_CASE("Constructing BigInt's with values <= BUCKET_MAX_SIZE", "[constructors
     }
     SECTION("Consturction without '0x' prefix on hexadecimal string")
     {
-        int test_val = 0xff;
-        const char* test_str = "ff";
+        int test_val = 1;
+        const char* test_str = "1";
 
         BigInt* num = str_BigInt(test_str);
         REQUIRE(compare_uint(num, test_val) == 0);
@@ -240,6 +234,119 @@ TEST_CASE("Constructing BigInts with values > BUCKET_MAX_SIZE", "[constructors]"
         }
         free_BigInt(num);
     }
+}
+
+TEST_CASE("Adding with carry_in and carry_out", "[add_with_carry]")
+{
+    bucket_t carry_in = 1;
+
+    SECTION("Carry in 1, add 0 + 0 returns 1, carry_out 0")
+    {
+        int result = m_bigint.add_carry(&carry_in, 0, 0);
+        REQUIRE(result == 1);
+        REQUIRE(carry_in == 0);
+    }
+    SECTION("Carry in 0, add 0 + 0 returns 0, carry out 0")
+    {
+        carry_in = 0;
+        REQUIRE(m_bigint.add_carry(&carry_in, 0, 0) == 0);
+        REQUIRE(carry_in == 0);
+    }
+    SECTION("Carry in 0, add BUCKET_MAX_SIZE + 0 returns BUCKET_MAX_SIZE, carry out 0")
+    {
+        carry_in = 0;
+        REQUIRE(m_bigint.add_carry(&carry_in, BUCKET_MAX_SIZE, 0) == BUCKET_MAX_SIZE);
+        REQUIRE(carry_in == 0);
+    }
+    SECTION("Carry in 0, add BUCKET_MAX + 1 returns 0, carry out 1")
+    {
+        carry_in = 0;
+        REQUIRE(m_bigint.add_carry(&carry_in, BUCKET_MAX_SIZE, 1) == 0);
+        REQUIRE(carry_in == 1);
+    }
+    SECTION("Carry in 1, add BUCKET_MAX + 0 returns 0, carry out 1")
+    {
+        carry_in = 1;
+        REQUIRE(m_bigint.add_carry(&carry_in, BUCKET_MAX_SIZE, 0) == 0);
+        REQUIRE(carry_in == 1);
+    }
+    SECTION("Carry in 1, add BUCKET_MAX + 1 returns 1, carry out 1")
+    {
+        carry_in = 1;
+        REQUIRE(m_bigint.add_carry(&carry_in, BUCKET_MAX_SIZE, 1) == 1);
+        REQUIRE(carry_in == 1);
+    }
+    SECTION("Carry in 0, add BUCKET_MAX/2 + BUCKET_MAX/2 returns 0, carry out 1")
+    {
+        carry_in = 0;
+        REQUIRE(m_bigint.add_carry(&carry_in, 1UL << (BUCKET_WIDTH - 1), 
+                                              1UL << (BUCKET_WIDTH - 1)) == 0);
+        REQUIRE(carry_in == 1);
+    }
+}
+
+TEST_CASE("Adding BigInts to produce a new BigInt", "[add]")
+{
+    SECTION("add with b1 OR b2 as NULL returns NULL")
+    {
+        BigInt* placeholder = empty_BigInt();
+        REQUIRE(add(placeholder, NULL) == NULL);
+        REQUIRE(add(NULL, placeholder) == NULL);
+        free_BigInt(placeholder);
+    }
+    SECTION("Trivial addition")
+    {
+        BigInt* num1 = val_BigInt(1);
+        BigInt* num2 = str_BigInt("1");
+
+        BigInt* result = add(num1, num2);
+        REQUIRE(compare_uint(result, 2) == 0);
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(result);
+    }
+    SECTION("BUCKET_MAX + BUCKET_MAX_SIZE returns 2BUCKET_MAX")
+    {
+#if defined( BIGINT__x64 )
+        const char* bucket_max = "0xffffffffffffffff";
+        bucket_t expected_values[] = { 0xfffffffffffffffe, 0x1 };
+#elif defined( BIGINT__x86 )
+        const char* bucket_max = "0xffffffff";
+        bucket_t expected_values[] = { 0xfffffffe, 0x1 };
+#else // defined (BIGINT__8bit)
+        const char* bucket_max = "0xff";
+        bucket_t expected_values[] = { 0xfe, 0x1 };
+#endif
+        BigInt* num1 = str_BigInt(bucket_max);
+        BigInt* num2 = str_BigInt(bucket_max);
+        BigInt* num3 = add(num1, num2);
+
+        bucket_t* result = m_bigint.get_buckets(num3);
+
+        for (int i = 0; i < buckets(num3); ++i)
+        {
+            REQUIRE(result[i] == expected_values[i]);
+        }
+    }
+#if defined ( BIGINT__8bit )
+    SECTION("Addition with BigInt's of varying length")
+    {
+        const char* bignum = "0xfffffffff";
+        const char* smallnum = "0xff";
+        bucket_t expected_values[] = { 0xfe, 0x00, 0x00, 0x00, 0x10 };
+
+        BigInt* num1 = str_BigInt(bignum);
+        BigInt* num2 = str_BigInt(smallnum);
+        BigInt* num3 = add(num1, num2);
+
+        bucket_t* result = m_bigint.get_buckets(num3);
+
+        for (int i = 0; i < buckets(num3); ++i)
+        {
+            REQUIRE((int) result[i] == expected_values[i]);
+        }
+    }
+#endif
 }
 
 TEST_CASE("Converting characters to integer values", "[char_to_num]")
