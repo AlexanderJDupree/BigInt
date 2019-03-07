@@ -21,6 +21,73 @@ struct BigInt
     int8_t sign;
 };
 
+/*******************************************************************************
+* STATIC MEMBER FUNCTIONS
+*******************************************************************************/
+
+#if defined( BIGINT__x64 )
+
+static bucket_t add_with_carry(bucket_t *carry, bucket_t b1, bucket_t b2) 
+{
+    bucket_t sum;
+    bucket_t carry_in = *carry;
+    uint8_t carry_out;
+
+    asm(
+        "xorq	%0, %0\n\t"
+        "cmpq   %4, %0\n\t"
+        "movq	%2, %0\n\t"
+        "adcq	%3, %0\n\t"
+        "setc	%1\n\t"
+        : "=&rm" (sum), "=&rm"(carry_out)
+        : "rm" (b1), "rm" (b2), "r" (carry_in)
+        : "cc"
+    );
+
+    *carry = carry_out;
+    return sum;
+}
+
+#elif defined( BIGINT__x86 )
+
+static bucket_t add_with_carry(bucket_t *carry, bucket_t b1, bucket_t b2) 
+{
+    bucket_t sum;
+    bucket_t carry_in = *carry;
+    uint8_t carry_out;
+
+    asm(
+        "xorl	%0, %0\n\t"
+        "cmpl   %4, %0\n\t"
+        "movl	%2, %0\n\t"
+        "adcl	%3, %0\n\t"
+        "setc	%1\n\t"
+        : "=&rm" (sum), "=&rm"(carry_out)
+        : "rm" (b1), "rm" (b2), "r" (carry_in)
+        : "cc"
+    );
+
+    *carry = carry_out;
+    return sum;
+}
+
+#else
+
+static bucket_t add_with_carry(bucket_t* carry, bucket_t b1, bucket_t b2) 
+{
+    bucket_t sum = b1;
+
+    uint8_t carry_in = (sum += *carry) < b1 ? 1 : 0;
+
+    uint8_t carry_out = (sum += b2) < b2 ? 1 : carry_in;
+
+    *carry = carry_out;
+
+    return sum;
+}
+
+#endif
+
 static int count_hex_digits(bucket_t num)
 {
     if(num == 0)
@@ -37,21 +104,6 @@ static int count_hex_digits(bucket_t num)
 #else
     return snprintf(NULL, 0, "%x", num);
 #endif
-}
-
-// Deprecated now that BigInt only supports hexadecimal input
-static int char_to_num(char c, int base)
-{
-    c = tolower(c);
-
-    // Default base is 10
-    base = (base < 2 || base > 36) ? 10 : base;
-
-    char upper_alphabetic_limit = 'a' + base - 11;
-    char upper_numeric_limit = (base < 10) ? '0' + base - 1 : '9';
-
-    return (c >= '0' && c <= upper_numeric_limit)   ? c - '0' :
-           (c >= 'a'&& c <= upper_alphabetic_limit) ? c - 'a' + 10 : -1;
 }
 
 static int hex_value(char c)
@@ -164,6 +216,63 @@ static const char* fill_buckets(const char* start, const char* end,
         return start;
 }
 
+static void swap (BigInt** b1, BigInt** b2)
+{
+    BigInt* temp = *b1;
+    *b1 = *b2;
+    *b2 = temp;
+    return;
+}
+
+static size_t leading_bucket(BigInt* num)
+{
+    if(num)
+    {
+        size_t lead_bucket = num->nbuckets;
+        while(num->value[--lead_bucket] == 0 && lead_bucket > 0);
+        return ++lead_bucket;
+    }
+    return 0;
+}
+
+static void display_bucket(bucket_t val)
+{
+#ifdef BIGINT__x86
+    printf("%0*x", 2 * (int) sizeof(bucket_t), val);
+#else
+    // Cast is used so 8bit debug build can use the %lx formatter
+    printf("%0*lx", 2 * (int) sizeof(bucket_t), (uint64_t) val);
+#endif
+    return;
+}
+
+// reverse for each
+static void rfor_each(bucket_t* buckets, int nbuckets, void(*action)(bucket_t val))
+{
+    for(;nbuckets >= 0; --nbuckets)
+    {
+        action(buckets[nbuckets]);
+    }
+    return;
+}
+
+static void grow_BigInt(BigInt* num, size_t delta)
+{
+    size_t index = num->nbuckets;
+    num->nbuckets += delta;
+    num->value = (bucket_t*) realloc(num->value, num->nbuckets * sizeof(bucket_t));
+
+    for(size_t i = index; i < num->nbuckets; ++i)
+    {
+        num->value[i] = 0;
+    }
+    return;
+}
+
+/*******************************************************************************
+* CONSTRUCTORS
+*******************************************************************************/
+
 BigInt* reserve_BigInt(bucket_t buckets)
 {
     BigInt* new_int = (BigInt*) malloc(sizeof(BigInt));
@@ -219,6 +328,104 @@ BigInt* str_BigInt(const char* str_num)
     return new_int;
 }
 
+/*******************************************************************************
+* ARITHMETIC
+*******************************************************************************/
+
+BigInt* add(BigInt* b1, BigInt* b2)
+{
+    if(b1 == NULL || b2 == NULL)
+    {
+        return NULL;
+    }
+
+    size_t b1_buckets = leading_bucket(b1);
+    size_t b2_buckets = leading_bucket(b2);
+    if(b1_buckets < b2_buckets)
+    {
+        swap(&b1, &b2);
+        size_t temp = b1_buckets;
+        b1_buckets = b2_buckets;
+        b2_buckets = temp;
+    }
+
+    bucket_t carry_out = 0;
+
+    BigInt* result = reserve_BigInt(b1_buckets + 1);
+
+    size_t i = 0;
+    for(; i < b2_buckets; ++i)
+    {
+        result->value[i] = add_with_carry(&carry_out, b1->value[i], b2->value[i]);
+    }
+    for(; i < b1_buckets; ++i)
+    {
+        result->value[i] = add_with_carry(&carry_out, b1->value[i], 0);
+    }
+    result->value[i] = carry_out;
+
+    return result;
+}
+
+BigInt* add_into(BigInt* src, BigInt* dest)
+{
+    if(src == NULL || dest == NULL)
+    {
+        return NULL;
+    }
+    size_t src_buckets = leading_bucket(src);
+    if(dest->nbuckets <= src_buckets)
+    {
+        grow_BigInt(dest, src_buckets - dest->nbuckets + 1);
+    }
+
+    bucket_t carry_out = 0;
+
+    size_t i = 0;
+    for(; i < src_buckets; ++i)
+    {
+        dest->value[i] = add_with_carry(&carry_out, dest->value[i], src->value[i]);
+    }
+    for(; i < dest->nbuckets; ++i)
+    {
+        dest->value[i] = add_with_carry(&carry_out, dest->value[i], 0);
+    }
+    dest->value[i] = carry_out;
+
+    return dest;
+}
+
+/*******************************************************************************
+* UTILITIES/COMPARISON
+*******************************************************************************/
+
+void free_BigInt(BigInt* num)
+{
+    free(num->value);
+    free(num);
+    return;
+}
+
+void display(BigInt* num)
+{
+    size_t lead_bucket = leading_bucket(num);
+
+    printf("%s", (num->sign < 0) ? "-0x" : "0x");
+
+#ifdef BIGINT__x86
+    printf("%x", num->value[lead_bucket]);
+#else
+    // Cast is so the 8bit debug build can use the %lx formatter
+    printf("%lx", (uint64_t) num->value[--lead_bucket]);
+#endif
+
+    rfor_each(num->value, --lead_bucket, display_bucket);
+
+    printf("\n");
+
+    return;
+}
+
 BigInt* clear_BigInt(BigInt* num)
 {
     for(size_t i = 0; i < num->nbuckets; ++i)
@@ -229,12 +436,34 @@ BigInt* clear_BigInt(BigInt* num)
     return num;
 }
 
-void free_BigInt(BigInt* num)
+int compare_bigint(BigInt* lhs, BigInt* rhs)
 {
-    free(num->value);
-    free(num);
-    return;
+    // TODO this compares pointers, need to perform arithmetic
+    return lhs->value - rhs->value;
 }
+
+int compare_uint(BigInt* lhs, bucket_t rhs)
+{
+    if(lhs)
+    {
+        return lhs->value[0] - rhs;
+    }
+    return rhs;
+}
+
+int compare_int(BigInt* lhs, sbucket_t rhs)
+{
+    if(lhs)
+    {
+        return (lhs->sign < 0 && rhs > 0 ) ? 
+                compare_uint(lhs, labs(rhs)) * -1 : compare_uint(lhs, labs(rhs));
+    }
+    return rhs;
+}
+
+/*******************************************************************************
+* INSPECTORS
+*******************************************************************************/
 
 int buckets(BigInt* num)
 {
@@ -261,32 +490,26 @@ int hex_digits(BigInt* num)
     return -1;
 }
 
-int compare_bigint(BigInt* lhs, BigInt* rhs)
-{
-    // TODO this compares pointers, need to perform arithmetic
-    return lhs->value - rhs->value;
-}
-
-int compare_uint(BigInt* lhs, bucket_t rhs)
-{
-    if(lhs)
-    {
-        return lhs->value[0] - rhs;
-    }
-    return rhs;
-}
-
-int compare_int(BigInt* lhs, int_val rhs)
-{
-    if(lhs)
-    {
-        return (lhs->sign < 0 && rhs > 0 ) ? 
-                compare_uint(lhs, labs(rhs)) * -1 : compare_uint(lhs, labs(rhs));
-    }
-    return rhs;
-}
+/*******************************************************************************
+* UNIT TEST MOCK OBJECT
+*******************************************************************************/
 
 #ifdef MOCKING_ENABLED
+
+// Deprecated now that BigInt only supports hexadecimal input
+static int char_to_num(char c, int base)
+{
+    c = tolower(c);
+
+    // Default base is 10
+    base = (base < 2 || base > 36) ? 10 : base;
+
+    char upper_alphabetic_limit = 'a' + base - 11;
+    char upper_numeric_limit = (base < 10) ? '0' + base - 1 : '9';
+
+    return (c >= '0' && c <= upper_numeric_limit)   ? c - '0' :
+           (c >= 'a'&& c <= upper_alphabetic_limit) ? c - 'a' + 10 : -1;
+}
 
 static bucket_t* get_buckets(BigInt* num)
 {
@@ -296,6 +519,7 @@ static bucket_t* get_buckets(BigInt* num)
 const mock_bigint m_bigint = {
     .char_to_num = char_to_num,
     .format_string = format_string,
+    .add_carry = add_with_carry,
     .get_buckets = get_buckets
 };
 

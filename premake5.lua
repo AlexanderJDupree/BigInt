@@ -61,13 +61,21 @@ project "BigInt"
     local source = "src/"
     local include = "include/"
 
-    files (source .. "**.c")
+    files (source .. "BigInt.c")
     includedirs (include)
 
-    filter { "action:gmake or action:gmake2" }
-        buildoptions "-std=c11"
+project "BigFibonacci"
+    kind "ConsoleApp"
+    language "C"
+    links "BigInt"
+    targetdir "bin/example/"
+    targetname  "BigFibonacci_%{cfg.platform}"
 
-    filter {} -- close filter
+    local source = "example/"
+    local include = "include/"
+
+    files (source .. "BigFibonacci.c")
+    includedirs(include)
 
 project "Tests"
     kind "ConsoleApp"
