@@ -65,10 +65,12 @@ BigInt* clear_BigInt(BigInt* num);
 // Creates a new big int with the sum of b1 + b2
 BigInt* add(BigInt* b1, BigInt* b2);
 
-// Adds src into destination, growing it if necessary
+// Adds src into destination, growing dest if necessary
 BigInt* add_into(BigInt* src, BigInt* dest);
 
 void free_BigInt(BigInt* num);
+
+void display(BigInt* num);
 
 // Returns number of allocated buckets. 0 if num is NULL
 int buckets(BigInt* num);

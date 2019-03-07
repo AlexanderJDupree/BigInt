@@ -9,31 +9,65 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <getopt.h>
 
 #include "BigInt.h"
 
+void usage();
+void run_BigFibonacci(unsigned n);
+
 int main(int argc, char **argv) 
 {
-    if (argc != 2)
+    int opt = 0;
+    int exit_status = 0;
+
+    while((opt = getopt(argc, argv, "h?")) != -1)
     {
-        printf("\nEnter a number");
-        return 1;
+        switch(opt)
+        {
+            case 'h' : exit_status = 1; 
+                       break;
+            case '?' : exit_status = 1;
+                       break;
+            default  : break;
+        }
     }
-
-    int n = atoi(argv[1]);
-
-    BigInt* b1 = str_BigInt("1");
-    BigInt* b2 = str_BigInt("1");
-
-    for (int i = 2; i < n; i++) {
-
-        BigInt* b = str_BigInt("1");
-
-        free_BigInt(b1);
-        b1 = b2;
-        b2 = b;
+    if(exit_status || optind >= argc)
+    {
+        usage();
     }
-    free_BigInt(b1);
-    free_BigInt(b2);
-    return 0;
+    else
+    {
+        run_BigFibonacci(strtoul(argv[optind], NULL, 0));
+    }
+    return exit_status;
 }
+
+void usage()
+{
+    fprintf(stderr, "usage:\n  run_BigFibonacci <integer>\nOptions:\n  "
+            "-h or -?\t\tDisplays usage info\n  "
+            "\n  BigFibonacci utilizes the BigInt library to display the Nth\n  "
+            "Fibonacci number. https://github.com/AlexanderJDupree/BigInt\n");
+    return;
+}
+
+void run_BigFibonacci(unsigned n)
+{
+    BigInt* a = val_BigInt(0);
+    BigInt* b = val_BigInt(1);
+
+    printf("Fibonacci Number %d is:\n", n);
+    for (unsigned i = 1; i < n; ++i)
+    {
+        BigInt* c = add(a, b);
+        free_BigInt(a);
+        a = b;
+        b = c;
+    }
+    display(b);
+    free_BigInt(a);
+    free_BigInt(b);
+    return;
+}
+

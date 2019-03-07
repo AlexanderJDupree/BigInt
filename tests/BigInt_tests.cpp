@@ -7,7 +7,6 @@
  *
  */
 
-
 #include <random>
 #include <chrono>
 #include <climits>
@@ -305,7 +304,7 @@ TEST_CASE("Adding BigInts to produce a new BigInt", "[add]")
         free_BigInt(num2);
         free_BigInt(result);
     }
-    SECTION("BUCKET_MAX + BUCKET_MAX_SIZE returns 2BUCKET_MAX")
+    SECTION("BUCKET_MAX + BUCKET_MAX returns 2 BUCKET_MAX")
     {
 #if defined( BIGINT__x64 )
         const char* bucket_max = "0xffffffffffffffff";
@@ -327,6 +326,9 @@ TEST_CASE("Adding BigInts to produce a new BigInt", "[add]")
         {
             REQUIRE(result[i] == expected_values[i]);
         }
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(num3);
     }
 #if defined ( BIGINT__8bit )
     SECTION("Addition with BigInt's of varying length")
@@ -345,6 +347,114 @@ TEST_CASE("Adding BigInts to produce a new BigInt", "[add]")
         {
             REQUIRE((int) result[i] == expected_values[i]);
         }
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(num3);
+    }
+    SECTION("Fib sequence")
+    {
+        bucket_t expected_values[] = { 0x62, 0x2 };
+
+        BigInt* num1 = str_BigInt("0xe9");
+        BigInt* num2 = str_BigInt("0x179");
+        BigInt* num3 = add(num1, num2);
+
+        bucket_t* result = m_bigint.get_buckets(num3);
+
+        for (int i = 0; i < 2; ++i)
+        {
+            REQUIRE((int) result[i] == (int) expected_values[i]);
+        }
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(num3);
+    }
+    SECTION("Fib sequence 2")
+    {
+        bucket_t expected_values[] = { 0x31, 0xda, 0x1 };
+
+        BigInt* num1 = str_BigInt("0xb520");
+        BigInt* num2 = str_BigInt("0x12511");
+        BigInt* num3 = add(num1, num2);
+
+        bucket_t* result = m_bigint.get_buckets(num3);
+
+        for (int i = 0; i < 3; ++i)
+        {
+            REQUIRE((int) result[i] == (int) expected_values[i]);
+        }
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(num3);
+    }
+#endif
+}
+
+TEST_CASE("Adding BigInt into another BigInt", "[add_into]")
+{
+    SECTION("add with b1 OR b2 as NULL returns NULL")
+    {
+        BigInt* placeholder = empty_BigInt();
+        REQUIRE(add(placeholder, NULL) == NULL);
+        REQUIRE(add(NULL, placeholder) == NULL);
+        free_BigInt(placeholder);
+    }
+    SECTION("Trivial addition")
+    {
+        BigInt* num1 = val_BigInt(1);
+        BigInt* num2 = str_BigInt("1");
+
+        add_into(num1, num2);
+        REQUIRE(compare_uint(num2, 2) == 0);
+        free_BigInt(num1);
+        free_BigInt(num2);
+    }
+    SECTION("BUCKET_MAX + BUCKET_MAX returns 2 * BUCKET_MAX")
+    {
+#if defined( BIGINT__x64 )
+        const char* bucket_max = "0xffffffffffffffff";
+        bucket_t expected_values[] = { 0xfffffffffffffffe, 0x1 };
+#elif defined( BIGINT__x86 )
+        const char* bucket_max = "0xffffffff";
+        bucket_t expected_values[] = { 0xfffffffe, 0x1 };
+#else // defined (BIGINT__8bit)
+        const char* bucket_max = "0xff";
+        bucket_t expected_values[] = { 0xfe, 0x1 };
+#endif
+        BigInt* num1 = str_BigInt(bucket_max);
+        BigInt* num2 = str_BigInt(bucket_max);
+
+        add_into(num1, num2);
+
+        bucket_t* result = m_bigint.get_buckets(num2);
+
+        for (int i = 0; i < buckets(num2); ++i)
+        {
+            REQUIRE(result[i] == expected_values[i]);
+        }
+        free_BigInt(num1);
+        free_BigInt(num2);
+    }
+#if defined ( BIGINT__8bit )
+    SECTION("Addition with BigInt's of varying length")
+    {
+        const char* bignum = "0xfffffffff";
+        const char* smallnum = "0xff";
+        bucket_t expected_values[] = { 0xfe, 0x00, 0x00, 0x00, 0x10 };
+
+        BigInt* num1 = str_BigInt(bignum);
+        BigInt* num2 = str_BigInt(smallnum);
+
+        add_into(num1, num2);
+
+        bucket_t* result = m_bigint.get_buckets(num2);
+
+        for (int i = 0; i < buckets(num2); ++i)
+        {
+            REQUIRE((int) result[i] == expected_values[i]);
+        }
+        free_BigInt(num1);
+        free_BigInt(num2);
     }
 #endif
 }

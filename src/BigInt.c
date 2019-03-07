@@ -235,6 +235,40 @@ static size_t leading_bucket(BigInt* num)
     return 0;
 }
 
+static void display_bucket(bucket_t val)
+{
+#ifdef BIGINT__x86
+    printf("%0*x", 2 * (int) sizeof(bucket_t), val);
+#else
+    // Cast is used so 8bit debug build can use the %lx formatter
+    printf("%0*lx", 2 * (int) sizeof(bucket_t), (uint64_t) val);
+#endif
+    return;
+}
+
+// reverse for each
+static void rfor_each(bucket_t* buckets, int nbuckets, void(*action)(bucket_t val))
+{
+    for(;nbuckets >= 0; --nbuckets)
+    {
+        action(buckets[nbuckets]);
+    }
+    return;
+}
+
+static void grow_BigInt(BigInt* num, size_t delta)
+{
+    size_t index = num->nbuckets;
+    num->nbuckets += delta;
+    num->value = (bucket_t*) realloc(num->value, num->nbuckets * sizeof(bucket_t));
+
+    for(size_t i = index; i < num->nbuckets; ++i)
+    {
+        num->value[i] = 0;
+    }
+    return;
+}
+
 /*******************************************************************************
 * CONSTRUCTORS
 *******************************************************************************/
@@ -317,7 +351,7 @@ BigInt* add(BigInt* b1, BigInt* b2)
 
     bucket_t carry_out = 0;
 
-    BigInt* result = reserve_BigInt(b1_buckets);
+    BigInt* result = reserve_BigInt(b1_buckets + 1);
 
     size_t i = 0;
     for(; i < b2_buckets; ++i)
@@ -333,6 +367,34 @@ BigInt* add(BigInt* b1, BigInt* b2)
     return result;
 }
 
+BigInt* add_into(BigInt* src, BigInt* dest)
+{
+    if(src == NULL || dest == NULL)
+    {
+        return NULL;
+    }
+    size_t src_buckets = leading_bucket(src);
+    if(dest->nbuckets <= src_buckets)
+    {
+        grow_BigInt(dest, src_buckets - dest->nbuckets + 1);
+    }
+
+    bucket_t carry_out = 0;
+
+    size_t i = 0;
+    for(; i < src_buckets; ++i)
+    {
+        dest->value[i] = add_with_carry(&carry_out, dest->value[i], src->value[i]);
+    }
+    for(; i < dest->nbuckets; ++i)
+    {
+        dest->value[i] = add_with_carry(&carry_out, dest->value[i], 0);
+    }
+    dest->value[i] = carry_out;
+
+    return dest;
+}
+
 /*******************************************************************************
 * UTILITIES/COMPARISON
 *******************************************************************************/
@@ -341,6 +403,26 @@ void free_BigInt(BigInt* num)
 {
     free(num->value);
     free(num);
+    return;
+}
+
+void display(BigInt* num)
+{
+    size_t lead_bucket = leading_bucket(num);
+
+    printf("%s", (num->sign < 0) ? "-0x" : "0x");
+
+#ifdef BIGINT__x86
+    printf("%x", num->value[lead_bucket]);
+#else
+    // Cast is so the 8bit debug build can use the %lx formatter
+    printf("%lx", (uint64_t) num->value[--lead_bucket]);
+#endif
+
+    rfor_each(num->value, --lead_bucket, display_bucket);
+
+    printf("\n");
+
     return;
 }
 
