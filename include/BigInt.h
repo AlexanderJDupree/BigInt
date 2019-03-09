@@ -68,6 +68,9 @@ BigInt* add(BigInt* b1, BigInt* b2);
 // Adds src into destination, growing dest if necessary
 BigInt* add_into(BigInt* src, BigInt* dest);
 
+// Creates a new big int with the sum b1 - b2
+BigInt* subtract(BigInt* b1, BigInt* b2);
+
 void free_BigInt(BigInt* num);
 
 void display(BigInt* num);

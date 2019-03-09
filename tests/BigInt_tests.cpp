@@ -64,7 +64,7 @@ TEST_CASE("Constructing BigInt's with values <= BUCKET_MAX_SIZE", "[constructors
         REQUIRE(compare_uint(num, test_val) == 0);
         free_BigInt(num);
     }
-    SECTION("Consturction without '0x' prefix on hexadecimal string")
+    SECTION("Construction without '0x' prefix on hexadecimal string")
     {
         int test_val = 1;
         const char* test_str = "1";
@@ -304,6 +304,31 @@ TEST_CASE("Adding BigInts to produce a new BigInt", "[add]")
         free_BigInt(num2);
         free_BigInt(result);
     }
+    SECTION("Adding a negative results in subtraction")
+    {
+        BigInt* num1 = val_BigInt(0xff);
+        BigInt* num2 = str_BigInt("-0x0f");
+
+        BigInt* result = add(num1, num2);
+        REQUIRE(compare_uint(result, 0xf0) == 0);
+
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(result);
+    }
+    SECTION("Adding a larger negative flips the sign")
+    {
+        BigInt* num1 = val_BigInt(0x0f);
+        BigInt* num2 = str_BigInt("-0xff");
+
+        BigInt* result = add(num1, num2);
+        REQUIRE(compare_uint(result, 0) == 0);
+        REQUIRE(sign(result)< 0);
+
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(result);
+    }
     SECTION("BUCKET_MAX + BUCKET_MAX returns 2 BUCKET_MAX")
     {
 #if defined( BIGINT__x64 )
@@ -351,7 +376,7 @@ TEST_CASE("Adding BigInts to produce a new BigInt", "[add]")
         free_BigInt(num2);
         free_BigInt(num3);
     }
-    SECTION("Fib sequence")
+    SECTION("Fib sequence sample")
     {
         bucket_t expected_values[] = { 0x62, 0x2 };
 
@@ -369,7 +394,7 @@ TEST_CASE("Adding BigInts to produce a new BigInt", "[add]")
         free_BigInt(num2);
         free_BigInt(num3);
     }
-    SECTION("Fib sequence 2")
+    SECTION("Fib sequence sample 2")
     {
         bucket_t expected_values[] = { 0x31, 0xda, 0x1 };
 
@@ -457,6 +482,23 @@ TEST_CASE("Adding BigInt into another BigInt", "[add_into]")
         free_BigInt(num2);
     }
 #endif
+}
+
+TEST_CASE("Subtracting BigInts", "[subtract]")
+{
+    SECTION("Trivial Subtraction")
+    {
+        BigInt* num1 = val_BigInt(5);
+        BigInt* num2 = val_BigInt(3);
+
+        BigInt* result = subtract(num1, num2);
+
+        REQUIRE(compare_uint(result, 2) == 0);
+
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(result);
+    }
 }
 
 TEST_CASE("Converting characters to integer values", "[char_to_num]")
