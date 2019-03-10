@@ -5,11 +5,11 @@
 
 **BigInt** is a numeric type that can represent integers with arbitrary precision. This allows the user to safely store and perform arithmetic on numbers greater than the current limit without risk of overflow. At least, this will be the case when the project is actually implemented. 
 
-Project Goals:
-    1. First and foremost, accuracy. 
-    2. Optimize until BigInt is blazing fast.
-    3. Support for x86 and x64 architechtures. 
-    4. Port to C++ to make use of operator overloads.
+Project Goals
+1. First and foremost, accuracy. 
+2. Optimize until BigInt is blazing fast.
+3. Support for x86 and x64 architechtures. 
+4. Port to C++ to make use of operator overloads.
 
 ## Getting Started
 
