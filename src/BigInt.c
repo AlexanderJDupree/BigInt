@@ -184,15 +184,19 @@ static void rfor_each(bucket_t* buckets, int nbuckets, void(*action)(bucket_t va
     return;
 }
 
-static void grow_BigInt(BigInt* num, size_t delta)
+static void grow_BigInt(BigInt* num, int delta)
 {
-    size_t index = num->nbuckets;
-    num->nbuckets += delta;
-    num->value = (bucket_t*) realloc(num->value, num->nbuckets * sizeof(bucket_t));
-
-    for(size_t i = index; i < num->nbuckets; ++i)
+    if(delta >= 0)
     {
-        num->value[i] = 0;
+        size_t index = num->nbuckets;
+        num->nbuckets += delta;
+
+        num->value = (bucket_t*) realloc(num->value, num->nbuckets * sizeof(bucket_t));
+
+        for(size_t i = index; i < num->nbuckets; ++i)
+        {
+            num->value[i] = 0;
+        }
     }
     return;
 }
@@ -407,8 +411,11 @@ BigInt* add(BigInt* b1, BigInt* b2)
         return NULL;
     }
 
+    // XOR the signs, if both are negative perform add. If either is negative
+    // perform subtract
     bucket_t (*operation)(bucket_t*, bucket_t, bucket_t) = 
-        (b2->sign < 0) ? subtract_with_carry : add_with_carry;
+        (!(b2->sign < 0) && b1->sign < 0) || (b2->sign < 0 && !(b1->sign < 0)) ? 
+        subtract_with_carry : add_with_carry;
 
     BigInt* result;
     int b2_is_bigger = compare_bigint(b2, b1) > 0;
@@ -423,7 +430,7 @@ BigInt* add(BigInt* b1, BigInt* b2)
         evaluate(b1, b2, result, operation);
     }
 
-    int negative = operation == subtract_with_carry;
+    int negative = (operation == subtract_with_carry && b1->sign > 0);
     if((negative && b2_is_bigger) || (b1->sign < 0 && !b2_is_bigger))
     {
         result->sign = -1;
@@ -438,12 +445,30 @@ BigInt* add_into(BigInt* src, BigInt* dest)
         return NULL;
     }
 
-    size_t src_buckets = leading_bucket(src);
-    if(dest->nbuckets <= src_buckets)
+    // XOR the signs, if both are negative perform add. If either is negative
+    // perform subtract
+    bucket_t (*operation)(bucket_t*, bucket_t, bucket_t) = 
+        (!(dest->sign < 0) && src->sign < 0) || 
+        (dest->sign < 0 && !(src->sign < 0)) ? 
+        subtract_with_carry : add_with_carry;
+
+    int src_is_bigger = compare_bigint(src, dest) > 0;
+    if(src_is_bigger)
     {
-        grow_BigInt(dest, src_buckets - dest->nbuckets + 1);
+        grow_BigInt(dest, src->nbuckets - dest->nbuckets + 1);
+        evaluate(src, dest, dest, operation);
     }
-    return evaluate(dest, src, dest, add_with_carry);
+    else
+    {
+        evaluate(dest, src, dest, operation);
+    }
+
+    int negative = (operation == subtract_with_carry && dest->sign > 0);
+    if((negative && src_is_bigger) || (dest->sign < 0 && !src_is_bigger))
+    {
+        dest->sign = -1;
+    }
+    return dest;
 }
 
 BigInt* subtract(BigInt* b1, BigInt* b2)
@@ -461,6 +486,21 @@ BigInt* subtract(BigInt* b1, BigInt* b2)
     b2->sign = b2->sign * -1;
 
     return result;
+}
+
+BigInt* subtract_from(BigInt* src, BigInt* dest)
+{
+    if(src == NULL || dest == NULL)
+    {
+        return NULL;
+    }
+    src->sign = src->sign * -1;
+
+    add_into(src, dest);
+
+    src->sign = src->sign * -1;
+
+    return dest;
 }
 
 /*******************************************************************************

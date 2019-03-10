@@ -329,6 +329,20 @@ TEST_CASE("Adding BigInts to produce a new BigInt", "[add]")
         free_BigInt(num2);
         free_BigInt(result);
     }
+    SECTION("Adding a larger positive to a negative flips the sign")
+    {
+        BigInt* num1 = val_BigInt(0xff);
+        BigInt* num2 = str_BigInt("-0x0f");
+
+        BigInt* result = add(num2, num1);
+        REQUIRE(compare_uint(result, 240) == 0);
+        REQUIRE(sign(result) > 0);
+
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(result);
+
+    }
     SECTION("BUCKET_MAX + BUCKET_MAX returns 2 BUCKET_MAX")
     {
 #if defined( BIGINT__x64 )
@@ -434,6 +448,30 @@ TEST_CASE("Adding BigInt into another BigInt", "[add_into]")
         free_BigInt(num1);
         free_BigInt(num2);
     }
+    SECTION("Adding a negative results in subtraction")
+    {
+        BigInt* num1 = val_BigInt(0xff);
+        BigInt* num2 = str_BigInt("-0x0f");
+
+        add_into(num1, num2);
+        REQUIRE(compare_uint(num2, 0xf0) == 0);
+
+        free_BigInt(num1);
+        free_BigInt(num2);
+    }
+    SECTION("Adding a larger negative flips the sign")
+    {
+        BigInt* num1 = val_BigInt(0x0f);
+        BigInt* num2 = str_BigInt("-0xff");
+
+        BigInt* result = add(num1, num2);
+        REQUIRE(compare_uint(result, 240) == 0);
+        REQUIRE(sign(result) < 0);
+
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(result);
+    }
     SECTION("BUCKET_MAX + BUCKET_MAX returns 2 * BUCKET_MAX")
     {
 #if defined( BIGINT__x64 )
@@ -524,19 +562,35 @@ TEST_CASE("Subtracting BigInts", "[subtract]")
         free_BigInt(num2);
         free_BigInt(result);
     }
+    SECTION("Subtraction of two negatives")
+    {
+        BigInt* num1 = val_BigInt(-0x0f);
+        BigInt* num2 = val_BigInt(-0xf0);
+
+        BigInt* result = subtract(num1, num2);
+        REQUIRE(compare_uint(result, 225) == 0);
+        REQUIRE(sign(result) > 0);
+
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(result);
+    }
     SECTION("-BUCKET_MAX - BUCKET_MAX returns 2BUCKET_MAX")
     {
 #if defined( BIGINT__x64 )
-        const char* bucket_max = "-0xffffffffffffffff";
+        const char* bucket_max = "0xffffffffffffffff";
+        const char* neg_bucket_max = "-0xffffffffffffffff";
         bucket_t expected_values[] = { 0xfffffffffffffffe, 0x1 };
 #elif defined( BIGINT__x86 )
-        const char* bucket_max = "-0xffffffff";
+        const char* bucket_max = "0xffffffff";
+        const char* neg_bucket_max = "-0xffffffff";
         bucket_t expected_values[] = { 0xfffffffe, 0x1 };
 #else // defined (BIGINT__8bit)
-        const char* bucket_max = "-0xff";
+        const char* bucket_max = "0xff";
+        const char* neg_bucket_max = "-0xff";
         bucket_t expected_values[] = { 0xfe, 0x1 };
 #endif
-        BigInt* num1 = str_BigInt(bucket_max);
+        BigInt* num1 = str_BigInt(neg_bucket_max);
         BigInt* num2 = str_BigInt(bucket_max);
         BigInt* num3 = subtract(num1, num2);
 
@@ -592,6 +646,79 @@ TEST_CASE("Subtracting BigInts", "[subtract]")
         free_BigInt(num3);
     }
 #endif
+}
+TEST_CASE("Subtracting BigInt from another BigInt", "[subtract_from]")
+{
+    SECTION("add with b1 OR b2 as NULL returns NULL")
+    {
+        BigInt* placeholder = empty_BigInt();
+        REQUIRE(add(placeholder, NULL) == NULL);
+        REQUIRE(add(NULL, placeholder) == NULL);
+        free_BigInt(placeholder);
+    }
+    SECTION("Trivial subtraction")
+    {
+        BigInt* num1 = val_BigInt(1);
+        BigInt* num2 = str_BigInt("1");
+
+        subtract_from(num1, num2);
+        REQUIRE(compare_uint(num2, 0) == 0);
+        free_BigInt(num1);
+        free_BigInt(num2);
+    }
+    SECTION("Subtracting a negative results in addition")
+    {
+        BigInt* num1 = val_BigInt(0xf0);
+        BigInt* num2 = str_BigInt("-0x0f");
+
+        subtract_from(num2, num1);
+        REQUIRE(compare_uint(num1, 0xff) == 0);
+
+        free_BigInt(num1);
+        free_BigInt(num2);
+    }
+    SECTION("Subtracting a larger negative flips the sign")
+    {
+        BigInt* num1 = val_BigInt(0xff);
+        BigInt* num2 = str_BigInt("0x0f");
+
+        subtract_from(num1, num2);
+        REQUIRE(compare_uint(num2, 240) == 0);
+        REQUIRE(sign(num2) < 0);
+
+        free_BigInt(num1);
+        free_BigInt(num2);
+    }
+    SECTION("-BUCKET_MAX - BUCKET_MAX returns 2BUCKET_MAX")
+    {
+#if defined( BIGINT__x64 )
+        const char* bucket_max = "0xffffffffffffffff";
+        const char* neg_bucket_max = "-0xffffffffffffffff";
+        bucket_t expected_values[] = { 0xfffffffffffffffe, 0x1 };
+#elif defined( BIGINT__x86 )
+        const char* bucket_max = "0xffffffff";
+        const char* neg_bucket_max = "-0xffffffff";
+        bucket_t expected_values[] = { 0xfffffffe, 0x1 };
+#else // defined (BIGINT__8bit)
+        const char* bucket_max = "0xff";
+        const char* neg_bucket_max = "-0xff";
+        bucket_t expected_values[] = { 0xfe, 0x1 };
+#endif
+        BigInt* num1 = str_BigInt(neg_bucket_max);
+        BigInt* num2 = str_BigInt(bucket_max);
+        
+        subtract_from(num2, num1);
+
+        bucket_t* result = m_bigint.get_buckets(num1);
+
+        REQUIRE(sign(num1) < 0);
+        for (int i = 0; i < buckets(num1); ++i)
+        {
+            REQUIRE(result[i] == (uint64_t) expected_values[i]);
+        }
+        free_BigInt(num1);
+        free_BigInt(num2);
+    }
 }
 
 TEST_CASE("Converting characters to integer values", "[char_to_num]")
