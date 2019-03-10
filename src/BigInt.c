@@ -368,7 +368,7 @@ static bucket_t subtract_with_carry(bucket_t* carry, bucket_t b1, bucket_t b2)
 
     uint8_t carry_in = (sum -= *carry) > b1 ? 1 : 0;
 
-    uint8_t carry_out = (sum -= b2) > b2 ? 1 : carry_in;
+    uint8_t carry_out = (sum -= b2) > b2 && b2 != 0 ? 1 : carry_in;
 
     *carry = carry_out;
 
@@ -379,9 +379,11 @@ static bucket_t subtract_with_carry(bucket_t* carry, bucket_t b1, bucket_t b2)
 
 
 static BigInt* evaluate(BigInt* b1, BigInt* b2, BigInt* dest, 
-                        size_t b1_buckets, size_t b2_buckets, 
                         bucket_t (*operation)(bucket_t*, bucket_t, bucket_t))
 {
+    size_t b1_buckets = leading_bucket(b1);
+    size_t b2_buckets = leading_bucket(b2);
+
     bucket_t carry_out = 0;
 
     size_t i = 0;
@@ -405,25 +407,24 @@ BigInt* add(BigInt* b1, BigInt* b2)
         return NULL;
     }
 
-    size_t b1_buckets = leading_bucket(b1);
-    size_t b2_buckets = leading_bucket(b2);
     bucket_t (*operation)(bucket_t*, bucket_t, bucket_t) = 
-        (b1->sign < 0 || b2->sign < 0) ? subtract_with_carry : add_with_carry;
+        (b2->sign < 0) ? subtract_with_carry : add_with_carry;
 
     BigInt* result;
-
-    if(b1_buckets < b2_buckets)
+    int b2_is_bigger = compare_bigint(b2, b1) > 0;
+    if(b2_is_bigger)
     {
-        result = reserve_BigInt(b2_buckets + 1);
-        evaluate(b2, b1, result, b2_buckets, b1_buckets, operation);
+        result = reserve_BigInt(b2->nbuckets + 1);
+        evaluate(b2, b1, result, operation);
     }
     else
     {
-        result = reserve_BigInt(b1_buckets + 1);
-        evaluate(b1, b2, result, b1_buckets, b2_buckets, operation);
+        result = reserve_BigInt(b1->nbuckets + 1);
+        evaluate(b1, b2, result, operation);
     }
 
-    if(operation == subtract_with_carry && b2_buckets > b1_buckets)
+    int negative = operation == subtract_with_carry;
+    if((negative && b2_is_bigger) || (b1->sign < 0 && !b2_is_bigger))
     {
         result->sign = -1;
     }
@@ -442,7 +443,7 @@ BigInt* add_into(BigInt* src, BigInt* dest)
     {
         grow_BigInt(dest, src_buckets - dest->nbuckets + 1);
     }
-    return evaluate(dest, src, dest, dest->nbuckets, src_buckets, add_with_carry);
+    return evaluate(dest, src, dest, add_with_carry);
 }
 
 BigInt* subtract(BigInt* b1, BigInt* b2)
@@ -452,14 +453,12 @@ BigInt* subtract(BigInt* b1, BigInt* b2)
         return NULL;
     }
 
-    uint8_t sign = b2->sign;
-    if(sign > 0)
-    {
-        b2->sign = -1;
-    }
+    // flipping the sign will result in the correct operation
+    b2->sign = b2->sign * -1;
 
     BigInt* result = add(b1, b2);
-    b2->sign = sign;
+
+    b2->sign = b2->sign * -1;
 
     return result;
 }
@@ -507,8 +506,11 @@ BigInt* clear_BigInt(BigInt* num)
 
 int compare_bigint(BigInt* lhs, BigInt* rhs)
 {
-    // TODO this compares pointers, need to perform arithmetic
-    return lhs->value - rhs->value;
+    size_t b1 = leading_bucket(lhs);
+    size_t b2 = leading_bucket(rhs);
+    int result = b1 - b2;
+
+    return (result == 0) ? (int)(lhs->value[b1 - 1] - rhs->value[b2 - 1]) : result;
 }
 
 int compare_uint(BigInt* lhs, bucket_t rhs)

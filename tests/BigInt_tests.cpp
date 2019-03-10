@@ -322,8 +322,8 @@ TEST_CASE("Adding BigInts to produce a new BigInt", "[add]")
         BigInt* num2 = str_BigInt("-0xff");
 
         BigInt* result = add(num1, num2);
-        REQUIRE(compare_uint(result, 0) == 0);
-        REQUIRE(sign(result)< 0);
+        REQUIRE(compare_uint(result, 240) == 0);
+        REQUIRE(sign(result) < 0);
 
         free_BigInt(num1);
         free_BigInt(num2);
@@ -499,6 +499,99 @@ TEST_CASE("Subtracting BigInts", "[subtract]")
         free_BigInt(num2);
         free_BigInt(result);
     }
+    SECTION("subtracting a negative results in addition")
+    {
+        BigInt* num1 = val_BigInt(0xf0);
+        BigInt* num2 = str_BigInt("-0x0f");
+
+        BigInt* result = subtract(num1, num2);
+        REQUIRE(compare_uint(result, 0xff) == 0);
+
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(result);
+    }
+    SECTION("Subtracting a larger number flips the sign")
+    {
+        BigInt* num1 = val_BigInt(0x0f);
+        BigInt* num2 = str_BigInt("0xff");
+
+        BigInt* result = subtract(num1, num2);
+        REQUIRE(compare_uint(result, 240) == 0);
+        REQUIRE(sign(result) < 0);
+
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(result);
+    }
+    SECTION("-BUCKET_MAX - BUCKET_MAX returns 2BUCKET_MAX")
+    {
+#if defined( BIGINT__x64 )
+        const char* bucket_max = "-0xffffffffffffffff";
+        bucket_t expected_values[] = { 0xfffffffffffffffe, 0x1 };
+#elif defined( BIGINT__x86 )
+        const char* bucket_max = "-0xffffffff";
+        bucket_t expected_values[] = { 0xfffffffe, 0x1 };
+#else // defined (BIGINT__8bit)
+        const char* bucket_max = "-0xff";
+        bucket_t expected_values[] = { 0xfe, 0x1 };
+#endif
+        BigInt* num1 = str_BigInt(bucket_max);
+        BigInt* num2 = str_BigInt(bucket_max);
+        BigInt* num3 = subtract(num1, num2);
+
+        bucket_t* result = m_bigint.get_buckets(num3);
+
+        REQUIRE(sign(num3) < 0);
+        for (int i = 0; i < buckets(num3); ++i)
+        {
+            REQUIRE(result[i] == (uint64_t) expected_values[i]);
+        }
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(num3);
+    }
+#if defined ( BIGINT__8bit )
+    SECTION("subtraction with BigInt's of varying length")
+    {
+        const char* bignum = "0xfffffffff";
+        const char* smallnum = "0xff";
+        bucket_t expected_values[] = { 0x00, 0xff, 0xff, 0xff, 0xf };
+
+        BigInt* num1 = str_BigInt(bignum);
+        BigInt* num2 = str_BigInt(smallnum);
+        BigInt* num3 = subtract(num1, num2);
+
+        bucket_t* result = m_bigint.get_buckets(num3);
+
+        for (int i = 0; i < buckets(num3); ++i)
+        {
+            REQUIRE((int) result[i] == (int) expected_values[i]);
+        }
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(num3);
+    }
+    SECTION("Fib sequence sample 2")
+    {
+        bucket_t expected_values[] = { 0xf1, 0x6f};
+
+        BigInt* num1 = str_BigInt("0xb520");
+        BigInt* num2 = str_BigInt("0x12511");
+        BigInt* num3 = subtract(num1, num2);
+
+        bucket_t* result = m_bigint.get_buckets(num3);
+
+        REQUIRE(sign(num3) < 0);
+        for (int i = 0; i < 2; ++i)
+        {
+            REQUIRE((int) result[i] == (int) expected_values[i]);
+        }
+        free_BigInt(num1);
+        free_BigInt(num2);
+        free_BigInt(num3);
+    }
+#endif
 }
 
 TEST_CASE("Converting characters to integer values", "[char_to_num]")
