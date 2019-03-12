@@ -24,70 +24,6 @@ struct BigInt
 /*******************************************************************************
 * STATIC MEMBER FUNCTIONS
 *******************************************************************************/
-
-#if defined( BIGINT__x64 )
-
-static bucket_t add_with_carry(bucket_t *carry, bucket_t b1, bucket_t b2) 
-{
-    bucket_t sum;
-    bucket_t carry_in = *carry;
-    uint8_t carry_out;
-
-    asm(
-        "xorq	%0, %0\n\t"
-        "cmpq   %4, %0\n\t"
-        "movq	%2, %0\n\t"
-        "adcq	%3, %0\n\t"
-        "setc	%1\n\t"
-        : "=&rm" (sum), "=&rm"(carry_out)
-        : "rm" (b1), "rm" (b2), "r" (carry_in)
-        : "cc"
-    );
-
-    *carry = carry_out;
-    return sum;
-}
-
-#elif defined( BIGINT__x86 )
-
-static bucket_t add_with_carry(bucket_t *carry, bucket_t b1, bucket_t b2) 
-{
-    bucket_t sum;
-    bucket_t carry_in = *carry;
-    uint8_t carry_out;
-
-    asm(
-        "xorl	%0, %0\n\t"
-        "cmpl   %4, %0\n\t"
-        "movl	%2, %0\n\t"
-        "adcl	%3, %0\n\t"
-        "setc	%1\n\t"
-        : "=&rm" (sum), "=&rm"(carry_out)
-        : "rm" (b1), "rm" (b2), "r" (carry_in)
-        : "cc"
-    );
-
-    *carry = carry_out;
-    return sum;
-}
-
-#else
-
-static bucket_t add_with_carry(bucket_t* carry, bucket_t b1, bucket_t b2) 
-{
-    bucket_t sum = b1;
-
-    uint8_t carry_in = (sum += *carry) < b1 ? 1 : 0;
-
-    uint8_t carry_out = (sum += b2) < b2 ? 1 : carry_in;
-
-    *carry = carry_out;
-
-    return sum;
-}
-
-#endif
-
 static int count_hex_digits(bucket_t num)
 {
     if(num == 0)
@@ -216,14 +152,6 @@ static const char* fill_buckets(const char* start, const char* end,
         return start;
 }
 
-static void swap (BigInt** b1, BigInt** b2)
-{
-    BigInt* temp = *b1;
-    *b1 = *b2;
-    *b2 = temp;
-    return;
-}
-
 static size_t leading_bucket(BigInt* num)
 {
     if(num)
@@ -256,15 +184,19 @@ static void rfor_each(bucket_t* buckets, int nbuckets, void(*action)(bucket_t va
     return;
 }
 
-static void grow_BigInt(BigInt* num, size_t delta)
+static void grow_BigInt(BigInt* num, int delta)
 {
-    size_t index = num->nbuckets;
-    num->nbuckets += delta;
-    num->value = (bucket_t*) realloc(num->value, num->nbuckets * sizeof(bucket_t));
-
-    for(size_t i = index; i < num->nbuckets; ++i)
+    if(delta >= 0)
     {
-        num->value[i] = 0;
+        size_t index = num->nbuckets;
+        num->nbuckets += delta;
+
+        num->value = (bucket_t*) realloc(num->value, num->nbuckets * sizeof(bucket_t));
+
+        for(size_t i = index; i < num->nbuckets; ++i)
+        {
+            num->value[i] = 0;
+        }
     }
     return;
 }
@@ -332,6 +264,146 @@ BigInt* str_BigInt(const char* str_num)
 * ARITHMETIC
 *******************************************************************************/
 
+#if defined( BIGINT__x64 )
+
+static bucket_t add_with_carry(bucket_t *carry, bucket_t b1, bucket_t b2) 
+{
+    bucket_t sum;
+    bucket_t carry_in = *carry;
+    uint8_t carry_out;
+
+    asm(
+        "xorq	%0, %0\n\t"
+        "cmpq   %4, %0\n\t"
+        "movq	%2, %0\n\t"
+        "adcq	%3, %0\n\t"
+        "setc	%1\n\t"
+        : "=&rm" (sum), "=&rm"(carry_out)
+        : "rm" (b1), "rm" (b2), "r" (carry_in)
+        : "cc"
+    );
+
+    *carry = carry_out;
+    return sum;
+}
+
+static bucket_t subtract_with_carry(bucket_t* carry, bucket_t b1, bucket_t b2)
+{
+    bucket_t sum;
+    bucket_t carry_in = *carry;
+    uint8_t carry_out;
+
+    asm(
+        "xorq	%0, %0\n\t"
+        "cmpq   %4, %0\n\t"
+        "movq	%2, %0\n\t"
+        "sbbq	%3, %0\n\t"
+        "setc	%1\n\t"
+        : "=&rm" (sum), "=&rm"(carry_out)
+        : "rm" (b1), "rm" (b2), "r" (carry_in)
+        : "cc"
+    );
+
+    *carry = carry_out;
+    return sum;
+}
+
+#elif defined( BIGINT__x86 )
+
+static bucket_t add_with_carry(bucket_t *carry, bucket_t b1, bucket_t b2) 
+{
+    bucket_t sum;
+    bucket_t carry_in = *carry;
+    uint8_t carry_out;
+
+    asm(
+        "xorl	%0, %0\n\t"
+        "cmpl   %4, %0\n\t"
+        "movl	%2, %0\n\t"
+        "adcl	%3, %0\n\t"
+        "setc	%1\n\t"
+        : "=&rm" (sum), "=&rm"(carry_out)
+        : "rm" (b1), "rm" (b2), "r" (carry_in)
+        : "cc"
+    );
+
+    *carry = carry_out;
+    return sum;
+}
+
+static bucket_t subtract_with_carry(bucket_t* carry, bucket_t b1, bucket_t b2)
+{
+    bucket_t sum;
+    bucket_t carry_in = *carry;
+    uint8_t carry_out;
+
+    asm(
+        "xorl	%0, %0\n\t"
+        "cmpl   %4, %0\n\t"
+        "movl	%2, %0\n\t"
+        "sbbl	%3, %0\n\t"
+        "setc	%1\n\t"
+        : "=&rm" (sum), "=&rm"(carry_out)
+        : "rm" (b1), "rm" (b2), "r" (carry_in)
+        : "cc"
+    );
+
+    *carry = carry_out;
+    return sum;}
+
+#else
+
+static bucket_t add_with_carry(bucket_t* carry, bucket_t b1, bucket_t b2) 
+{
+    bucket_t sum = b1;
+
+    uint8_t carry_in = (sum += *carry) < b1 ? 1 : 0;
+
+    uint8_t carry_out = (sum += b2) < b2 ? 1 : carry_in;
+
+    *carry = carry_out;
+
+    return sum;
+}
+
+static bucket_t subtract_with_carry(bucket_t* carry, bucket_t b1, bucket_t b2)
+{
+    bucket_t sum = b1;
+
+    uint8_t carry_in = (sum -= *carry) > b1 ? 1 : 0;
+
+    uint8_t carry_out = (sum -= b2) > b2 && b2 != 0 ? 1 : carry_in;
+
+    *carry = carry_out;
+
+    return sum;
+}
+
+#endif
+
+
+static BigInt* evaluate(BigInt* b1, BigInt* b2, BigInt* dest, 
+                        bucket_t (*operation)(bucket_t*, bucket_t, bucket_t))
+{
+    size_t b1_buckets = leading_bucket(b1);
+    size_t b2_buckets = leading_bucket(b2);
+
+    bucket_t carry_out = 0;
+
+    size_t i = 0;
+    for(; i < b2_buckets; ++i)
+    {
+        dest->value[i] = operation(&carry_out, b1->value[i], b2->value[i]);
+    }
+    for(; i < b1_buckets; ++i)
+    {
+        dest->value[i] = operation(&carry_out, b1->value[i], 0);
+    }
+    dest->value[i] = carry_out;
+
+    return dest;
+}
+
 BigInt* add(BigInt* b1, BigInt* b2)
 {
     if(b1 == NULL || b2 == NULL)
@@ -339,31 +411,30 @@ BigInt* add(BigInt* b1, BigInt* b2)
         return NULL;
     }
 
-    size_t b1_buckets = leading_bucket(b1);
-    size_t b2_buckets = leading_bucket(b2);
-    if(b1_buckets < b2_buckets)
+    // XOR the signs, if both are negative perform add. If either is negative
+    // perform subtract
+    bucket_t (*operation)(bucket_t*, bucket_t, bucket_t) = 
+        (!(b2->sign < 0) && b1->sign < 0) || (b2->sign < 0 && !(b1->sign < 0)) ? 
+        subtract_with_carry : add_with_carry;
+
+    BigInt* result;
+    int b2_is_bigger = compare_bigint(b2, b1) > 0;
+    if(b2_is_bigger)
     {
-        swap(&b1, &b2);
-        size_t temp = b1_buckets;
-        b1_buckets = b2_buckets;
-        b2_buckets = temp;
+        result = reserve_BigInt(b2->nbuckets + 1);
+        evaluate(b2, b1, result, operation);
+    }
+    else
+    {
+        result = reserve_BigInt(b1->nbuckets + 1);
+        evaluate(b1, b2, result, operation);
     }
 
-    bucket_t carry_out = 0;
-
-    BigInt* result = reserve_BigInt(b1_buckets + 1);
-
-    size_t i = 0;
-    for(; i < b2_buckets; ++i)
+    int negative = (operation == subtract_with_carry && b1->sign > 0);
+    if((negative && b2_is_bigger) || (b1->sign < 0 && !b2_is_bigger))
     {
-        result->value[i] = add_with_carry(&carry_out, b1->value[i], b2->value[i]);
+        result->sign = -1;
     }
-    for(; i < b1_buckets; ++i)
-    {
-        result->value[i] = add_with_carry(&carry_out, b1->value[i], 0);
-    }
-    result->value[i] = carry_out;
-
     return result;
 }
 
@@ -373,24 +444,61 @@ BigInt* add_into(BigInt* src, BigInt* dest)
     {
         return NULL;
     }
-    size_t src_buckets = leading_bucket(src);
-    if(dest->nbuckets <= src_buckets)
+
+    // XOR the signs, if both are negative perform add. If either is negative
+    // perform subtract
+    bucket_t (*operation)(bucket_t*, bucket_t, bucket_t) = 
+        (!(dest->sign < 0) && src->sign < 0) || 
+        (dest->sign < 0 && !(src->sign < 0)) ? 
+        subtract_with_carry : add_with_carry;
+
+    int src_is_bigger = compare_bigint(src, dest) > 0;
+    if(src_is_bigger)
     {
-        grow_BigInt(dest, src_buckets - dest->nbuckets + 1);
+        grow_BigInt(dest, src->nbuckets - dest->nbuckets + 1);
+        evaluate(src, dest, dest, operation);
+    }
+    else
+    {
+        evaluate(dest, src, dest, operation);
     }
 
-    bucket_t carry_out = 0;
+    int negative = (operation == subtract_with_carry && dest->sign > 0);
+    if((negative && src_is_bigger) || (dest->sign < 0 && !src_is_bigger))
+    {
+        dest->sign = -1;
+    }
+    return dest;
+}
 
-    size_t i = 0;
-    for(; i < src_buckets; ++i)
+BigInt* subtract(BigInt* b1, BigInt* b2)
+{
+    if(b1 == NULL || b2 == NULL)
     {
-        dest->value[i] = add_with_carry(&carry_out, dest->value[i], src->value[i]);
+        return NULL;
     }
-    for(; i < dest->nbuckets; ++i)
+
+    // flipping the sign will result in the correct operation
+    b2->sign = b2->sign * -1;
+
+    BigInt* result = add(b1, b2);
+
+    b2->sign = b2->sign * -1;
+
+    return result;
+}
+
+BigInt* subtract_from(BigInt* src, BigInt* dest)
+{
+    if(src == NULL || dest == NULL)
     {
-        dest->value[i] = add_with_carry(&carry_out, dest->value[i], 0);
+        return NULL;
     }
-    dest->value[i] = carry_out;
+    src->sign = src->sign * -1;
+
+    add_into(src, dest);
+
+    src->sign = src->sign * -1;
 
     return dest;
 }
@@ -438,8 +546,11 @@ BigInt* clear_BigInt(BigInt* num)
 
 int compare_bigint(BigInt* lhs, BigInt* rhs)
 {
-    // TODO this compares pointers, need to perform arithmetic
-    return lhs->value - rhs->value;
+    size_t b1 = leading_bucket(lhs);
+    size_t b2 = leading_bucket(rhs);
+    int result = b1 - b2;
+
+    return (result == 0) ? (int)(lhs->value[b1 - 1] - rhs->value[b2 - 1]) : result;
 }
 
 int compare_uint(BigInt* lhs, bucket_t rhs)
