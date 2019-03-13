@@ -17,15 +17,38 @@ All releases are header only, meaning all you need to do is download the latest 
 
 ### Usage 
 
+Here's a sample function that can display the Nth fibonacci number. It's important to note that this function is only limited by the amount of memory on your machine. This is the idea of the BigInt library. 
+
 ```c++
 
-int main()
+void run_BigFibonacci(unsigned n)
 {
-    // TODO Create example code
-    return 0;
+    BigInt* a = val_BigInt(0);
+    BigInt* b = val_BigInt(1);
+
+    printf("Fibonacci Number %d is:\n", n);
+    for (unsigned i = 1; i < n; ++i)
+    {
+        BigInt* c = add(a, b);
+        free_BigInt(a);
+        a = b;
+        b = c;
+    }
+    display(b);
+    free_BigInt(a);
+    free_BigInt(b);
+    return;
 }
 
 ```
+
+Running this function with n=1000 will print:
+
+```
+0x21d8cb07b572c25732bb116f2c33bab0e83d0c699bad1a727a736a7e42ca93b697ad224d55398373062f18ff62b99c28068131a3fab0c12e3510283c1d60b00930b7e8803c312b4c8e6d5286805fc70b594dc75cc0604b
+```
+
+Currently, BigInt only support hexadecimal for input/output. However, I am open for contributors to pitch in and build support for input/output with arbitrary bases.
 
 ## What's in this Repo?
 

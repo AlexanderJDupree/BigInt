@@ -11,6 +11,8 @@
 #ifndef BIGINT_H
 #define BIGINT_H
 
+#define BIGINT_VERSION "v0.1"
+
 #define BIGINT_RADIX 16
 
 #include <stdint.h>

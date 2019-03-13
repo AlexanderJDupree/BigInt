@@ -1,9 +1,9 @@
 /* 
  * File: BigFibonacci.c
  *
- * Brief:  
- * 
- * Author: Alexander DuPre
+ * Brief:  Sample console app that prints the Nth fibonacci number.
+ *
+ * Author: Alexander DuPree
  *
  */
 
