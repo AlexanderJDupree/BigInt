@@ -24,14 +24,14 @@ before_install:
     - ./premake5 --cc=clang gmake2
 
 script:
-    - make -C gmake config=debug_x64
-    - make -C gmake config=debug_x86
-    - make -C gmake config=debug_8bit
-    - make -C gmake config=release_x64
-    - make -C gmake config=release_x86
-    - make -C gmake2 config=debug_x64
-    - make -C gmake2 config=debug_x86
-    - make -C gmake2 config=debug_8bit
-    - make -C gmake2 config=release_x64
-    - make -C gmake2 config=release_x86
+    - make -C gmake config=debug_x64 Tests
+    - make -C gmake config=debug_x86 Tests
+    - make -C gmake config=debug_8bit Tests
+    - make -C gmake config=release_x64 Tests
+    - make -C gmake config=release_x86 Tests
+    - make -C gmake2 config=debug_x64 Tests
+    - make -C gmake2 config=debug_x86 Tests
+    - make -C gmake2 config=debug_8bit Tests
+    - make -C gmake2 config=release_x64 Tests
+    - make -C gmake2 config=release_x86 Tests
 
