@@ -1,0 +1,24 @@
+language: c
+
+compiler: 
+    - clang
+    - gcc
+
+before_install:
+    - wget https://github.com/premake/premake-core/releases/download/v5.0.0-alpha13/premake-5.0.0-alpha13-linux.tar.gz
+    - tar -xvf premake-5.0.0-alpha13-linux.tar.gz 
+    - ./premake5 gmake
+    - ./premake5 --cc=clang gmake2
+
+script:
+    - make -C gmake config=debug_x64
+    - make -C gmake config=debug_x86
+    - make -C gmake config=debug_8bit
+    - make -C gmake config=release_x64
+    - make -C gmake config=release_x86
+    - make -C gmake2 config=debug_x64
+    - make -C gmake2 config=debug_x86
+    - make -C gmake2 config=debug_8bit
+    - make -C gmake2 config=release_x64
+    - make -C gmake2 config=release_x86
+
