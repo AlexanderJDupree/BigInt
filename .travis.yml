@@ -1,8 +1,19 @@
-language: c++
+dist: Xenial
+sudo: require
+language: cpp
 
-compiler: 
-    - clang
+compiler:
     - gcc
+    - clang
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-8
+      - g++-8
+      - clang-7
 
 before_install:
     - wget https://github.com/premake/premake-core/releases/download/v5.0.0-alpha13/premake-5.0.0-alpha13-linux.tar.gz
