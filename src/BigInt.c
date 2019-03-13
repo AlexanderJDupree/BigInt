@@ -264,7 +264,7 @@ BigInt* str_BigInt(const char* str_num)
 * ARITHMETIC
 *******************************************************************************/
 
-#if defined( BIGINT__x64 )
+#if defined( BIGINT__x64 ) && !defined( __clang__ )
 
 static bucket_t add_with_carry(bucket_t *carry, bucket_t b1, bucket_t b2) 
 {
@@ -308,7 +308,7 @@ static bucket_t subtract_with_carry(bucket_t* carry, bucket_t b1, bucket_t b2)
     return sum;
 }
 
-#elif defined( BIGINT__x86 )
+#elif defined( BIGINT__x86 ) && !defined( __clang__ )
 
 static bucket_t add_with_carry(bucket_t *carry, bucket_t b1, bucket_t b2) 
 {
@@ -351,7 +351,7 @@ static bucket_t subtract_with_carry(bucket_t* carry, bucket_t b1, bucket_t b2)
     *carry = carry_out;
     return sum;}
 
-#else
+#else // defined( BIGINT__8bit ) || defined ( __clang__ )
 
 static bucket_t add_with_carry(bucket_t* carry, bucket_t b1, bucket_t b2) 
 {

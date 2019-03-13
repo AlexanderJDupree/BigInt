@@ -512,9 +512,9 @@ TEST_CASE("Adding BigInt into another BigInt", "[add_into]")
 
         bucket_t* result = m_bigint.get_buckets(num2);
 
-        for (int i = 0; i < buckets(num2); ++i)
+        for (int i = 0; i < 5; ++i)
         {
-            REQUIRE((int) result[i] == expected_values[i]);
+            REQUIRE((int) result[i] == (int) expected_values[i]);
         }
         free_BigInt(num1);
         free_BigInt(num2);
@@ -564,8 +564,8 @@ TEST_CASE("Subtracting BigInts", "[subtract]")
     }
     SECTION("Subtraction of two negatives")
     {
-        BigInt* num1 = val_BigInt(-0x0f);
-        BigInt* num2 = val_BigInt(-0xf0);
+        BigInt* num1 = str_BigInt("-0x0f");
+        BigInt* num2 = str_BigInt("-0xf0");
 
         BigInt* result = subtract(num1, num2);
         REQUIRE(compare_uint(result, 225) == 0);
@@ -618,7 +618,7 @@ TEST_CASE("Subtracting BigInts", "[subtract]")
 
         bucket_t* result = m_bigint.get_buckets(num3);
 
-        for (int i = 0; i < buckets(num3); ++i)
+        for (int i = 0; i < 5; ++i)
         {
             REQUIRE((int) result[i] == (int) expected_values[i]);
         }
