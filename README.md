@@ -20,6 +20,7 @@ Feature Roadmap
 4. Implement multiplication operations
 5. Implement division operations 
 6. Implement exponention operations
+7. Release version 1.0.0!
 
 ## Getting Started
 
