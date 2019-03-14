@@ -15,6 +15,10 @@ addons:
       - g++-8
       - clang-7
 
+# Travis uses a pretty lightweight ubuntu machine and doesn't have a lot of the
+# required 32 bit libraries because it is a 64bit machine. Thats why we need to
+# install the specific libraries. The wget and tar command just download the 
+# premake5 binary to generate our project files
 before_install:
     - sudo apt-get install gcc-multilib g++-multilib 
     - sudo apt-get install libx32gcc-4.8-dev
