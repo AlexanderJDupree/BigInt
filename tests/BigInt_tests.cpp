@@ -382,7 +382,7 @@ TEST_CASE("Adding BigInts to produce a new BigInt", "[add]")
 
         bucket_t* result = m_bigint.get_buckets(num3);
 
-        for (int i = 0; i < buckets(num3); ++i)
+        for (int i = 0; i < 5; ++i)
         {
             REQUIRE((int) result[i] == expected_values[i]);
         }

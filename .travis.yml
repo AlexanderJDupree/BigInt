@@ -1,0 +1,42 @@
+dist: Xenial
+sudo: require
+language: cpp
+
+compiler:
+    - gcc
+    - clang
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-8
+      - g++-8
+      - clang-7
+
+# Travis uses a pretty lightweight ubuntu machine and doesn't have a lot of the
+# required 32 bit libraries because it is a 64bit machine. Thats why we need to
+# install the specific libraries. The wget and tar command just download the 
+# premake5 binary to generate our project files
+before_install:
+    - sudo apt-get install gcc-multilib g++-multilib 
+    - sudo apt-get install libx32gcc-4.8-dev
+    - sudo apt-get install libc6-dev-i386
+    - wget https://github.com/premake/premake-core/releases/download/v5.0.0-alpha13/premake-5.0.0-alpha13-linux.tar.gz
+    - tar -xvf premake-5.0.0-alpha13-linux.tar.gz 
+    - ./premake5 gmake
+    - ./premake5 --cc=clang gmake2
+
+script:
+    - make -C gmake config=debug_x64 Tests
+    - make -C gmake config=debug_x86 Tests
+    - make -C gmake config=debug_8bit Tests
+    - make -C gmake config=release_x64 Tests
+    - make -C gmake config=release_x86 Tests
+    - make -C gmake2 config=debug_x64 Tests
+    - make -C gmake2 config=debug_x86 Tests
+    - make -C gmake2 config=debug_8bit Tests
+    - make -C gmake2 config=release_x64 Tests
+    - make -C gmake2 config=release_x86 Tests
+
