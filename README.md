@@ -63,13 +63,13 @@ Currently, BigInt only support hexadecimal for input/output. However, I am open 
 
 ## What's in this Repo?
 
-This repo utilizes [Premake5](https://github.com/premake/premake-core) to build the necessary project files. Once premake5 is installed just run:
+This repo utilizes [Premake5](https://premake.github.io/download.html) to build the necessary project files. Once premake5 is installed just run:
 
 ```
 premake5 gmake
 ```
 
-This will generate the GNU makefiles for this project. If you need specific project files run 'premake5 --help' for a list of supported actions. See the [Premake5](https://github.com/premake/premake-core) documentaion for further usage instructions.
+This will generate the GNU makefiles for this project. If you need specific project files run 'premake5 --help' for a list of supported actions. See the [Premake5](https://premake.github.io/download.html) documentaion for further usage instructions.
 
 If the GNU makefiles suffice, then you can generate the File_Reader static library and unit tests by running:
 
@@ -87,7 +87,7 @@ I've included a postbuild command in premake5.lua that will run the unit tests a
 ## Built With
 
 * [Catch2](https://github.com/catchorg/Catch2) - Unit Testing framework used
-* [Premake5](https://github.com/premake/premake-core) - Build system
+* [Premake5](https://premake.github.io/download.html) - Build system
 
 ## License
 
